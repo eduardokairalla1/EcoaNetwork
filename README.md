@@ -1,1 +1,18 @@
 # EcoaNetwork
+
+Every experience leaves an echo.
+
+## Docs
+
+- [Overview](docs/overview.md) — what this is and why
+- [Concepts](docs/concepts.md) — the ideas behind it, in plain terms
+- [Architecture](docs/architecture.md) — component roles and how they talk to each other
+- [How It Fits Together](docs/diagrams.md) — the same thing as diagrams, for the flows that are hard to read as prose
+- [Protocol](docs/protocol.md) — event format, signing, sync
+- [Entities](docs/entities.md) — what's being reviewed, and who can edit it
+- [Identity, Trust & Security](docs/identity.md) — keys, verification, threat model
+- [Verification](docs/verification.md) — how claims get issued, and why forging one doesn't help
+- [Reputation & Ranking](docs/reputation.md) — community voting, weighting, anti-brigading
+- [MVP](docs/mvp.md) — v1 scope, acceptance criteria, the demonstration
+- [Roadmap](docs/roadmap.md) — what to build, in what order, and why that order
+- [Decision log](docs/decisions.md) — every architectural decision taken in review, with its cost and what was rejected
