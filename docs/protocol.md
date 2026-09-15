@@ -54,17 +54,22 @@ Verification recomputes `signing_input` from the received envelope, so a node ne
 
 **The `ecoa-event-v1` prefix is domain separation**, and the `0x00` byte after it prevents any prefix ambiguity. `protocol` and `version` sitting inside the JSON already make cross-protocol replay hard, but only by accident of content. The prefix makes it structural: a signature produced for an Ecoa event can never be valid for anything else the same key might ever be asked to sign — a login challenge, a session token, a future feature nobody has thought of yet. This costs nothing today and cannot be added later without invalidating every signature ever made.
 
-### Signature verification must be strict
+### Signature verification follows ZIP-215
 
-Ed25519 implementations do **not** all accept the same set of signatures. Cofactored versus cofactorless verification, small-order public keys, and non-canonical encodings of the scalar `S` are each accepted by some libraries and rejected by others. In a network where every node independently decides whether an event is valid, that is not a cryptographic weakness — it is a **partition**: a Go node and a Rust node disagreeing about the same bytes, permanently, over an event neither one is wrong to have processed the way it did.
+Ed25519 implementations do **not** all accept the same set of signatures. Cofactored versus cofactorless verification, small-order points, and non-canonical encodings are each handled differently by different libraries. In a network where every node independently decides whether an event is valid, that is not a cryptographic weakness — it is a **partition**: a Go node and a Rust node disagreeing about the same bytes, permanently, over an event neither one was wrong to have processed the way it did.
 
-So verification is specified rather than left to whichever library is convenient:
+So verification is pinned to **ZIP-215**, which exists for precisely this problem:
 
-- **Reject non-canonical `S`** — the scalar must be fully reduced modulo the group order.
-- **Reject small-order public keys and small-order `R`.**
-- **Use cofactorless verification**, checking the equation exactly rather than multiplying through by the cofactor.
+- **Cofactored verification** — check `[8]R = [8]([s]B − [k]A)`, not the unbatched equation.
+- **The scalar must be canonical** — reject `S ≥ L`.
+- **Non-canonical point encodings are accepted** for `A` and `R`, provided they decode to a curve point at all.
+- **Small-order points are not rejected.**
 
-Together these are the ZIP-215-style strict rules, and any implementation that follows them accepts exactly the same signature set as any other. `did:key` decoding is held to the same standard: reject non-canonical multibase, reject anything that is not a valid Ed25519 point.
+The last two look wrong at a glance, and they are the entire point. ZIP-215 is not the strictest available rule set — it is the one under which every conforming implementation agrees, including with the large body of signatures already produced by permissive implementations. Cofactorless verification does the opposite: its result depends on whether a small-order component happens to be present, which is exactly how two honest nodes end up disagreeing about the same bytes.
+
+**Consensus and binding are different goals, and this design needs only the first.** Rejecting small-order keys buys *signature binding* — the guarantee that a signature cannot be mauled into a second valid one. This project already has that from somewhere else: `signature` sits outside the `eventId` digest, so a mauled signature over the same content yields the same `eventId` and is dropped as a duplicate. What is left to protect is agreement, and agreement is what ZIP-215 provides.
+
+`did:key` decoding is a separate question and stays strict: the multibase string must be canonical, because identities are compared as exact strings and two spellings of one key would fracture every authorship check in the protocol. Bytes that decode to no curve point are rejected there too.
 
 ### Signing key vs. identity
 
