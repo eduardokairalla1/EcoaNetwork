@@ -533,6 +533,27 @@ It does **not** limit nesting depth, and it recurses — so the stack-overflow h
 
 The gateway, indexer and client remain unchosen; they speak HTTP and SQL, not libp2p, and nothing about them is blocked by this.
 
+## 14. Related work
+
+### 14.1 The contribution claim was too wide, and the research narrowed it — **honesty fix**
+
+Researching the neighbouring protocols was scheduled early precisely so it could change the design rather than decorate it, and it did — by removing something from the contribution column.
+
+**Moderation as a separate, subscribable stream of labels is not new here.** AT Protocol has [stackable moderation](https://bsky.social/about/blog/03-12-2024-stackable-moderation): independent labelers publish labels, users subscribe to the ones they trust, and the underlying content is never deleted. That is the same design as this project's, arrived at independently. Prior framing in these documents implied it was a contribution; it is not, and the claim is withdrawn.
+
+Converging on it independently is still worth something — as evidence the design is right, not as evidence of originality.
+
+**What the research confirmed instead.** Nostr's relays [deliberately do not replicate to each other](https://nostr.how/en/the-protocol) — no gossip layer, no relay mesh, by design. That makes durability a client-side habit rather than a network property, and it is a real difference from this project, where inter-node replication is most of the cost of the network layer.
+
+**What survived as contribution**, stated narrowly:
+
+- **Authority over data nobody owns.** Every neighbouring protocol assumes each record has an owner. An entity's name has none, which is a problem a social network never has.
+- **Weighted claims as the Sybil defence**, per claim type, with the honest note that age cannot carry it.
+- **Vote-to-version binding**, which only matters when editable content carries a score.
+- **A published determinism boundary.** AT Protocol has the same architecture; we could not find the equivalent written contract.
+
+**The lesson worth keeping:** the wide claim would have survived until someone in a defence asked about Ozone. Doing this before writing code, rather than after, is what the roadmap ordering was for.
+
 ## Still open, and owned by the project
 
 - **Payload schemas per event type.** The largest remaining gap before Phase 0 closes. The rating scale is settled (§1.5) because its meaning has to be uniform across the network; the rest of each payload is ordinary schema work and nothing above depends on how it lands.
