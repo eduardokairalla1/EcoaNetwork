@@ -1,0 +1,1048 @@
+{
+  "topic": "Resolving the head of an edit chain",
+  "rule": "docs/protocol.md#resolving-the-head-of-a-chain",
+  "$comment": "Every link is by the same author, so the ordering is self-scoped: the author's own clock decides, and every implementation resolves the same head from the same set. Arrival order is irrelevant here.",
+  "cases": [
+    {
+      "name": "linear chain of three versions",
+      "why": "The common case. A listing must show the current version, never a superseded one.",
+      "arrival": [
+        {
+          "id": "e1",
+          "author": "alice",
+          "type": "review.created",
+          "at": "2026-01-01T10:00:00Z",
+          "payload": {
+            "entity": "cnpj:1",
+            "rating": 2,
+            "body": "v1"
+          }
+        },
+        {
+          "id": "e2",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-02T10:00:00Z",
+          "payload": {
+            "replaces": "e1",
+            "rating": 3,
+            "body": "v2"
+          }
+        },
+        {
+          "id": "e3",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-03T10:00:00Z",
+          "payload": {
+            "replaces": "e2",
+            "rating": 4,
+            "body": "v3"
+          }
+        }
+      ],
+      "expect": {
+        "head": "e3",
+        "chain": [
+          "e1",
+          "e2",
+          "e3"
+        ],
+        "withdrawn": false,
+        "truncated": false
+      }
+    },
+    {
+      "name": "fork resolved by higher createdAt",
+      "why": "Two edits naming the same predecessor happen when a client publishes offline, unaware of the other. Without a rule, each implementation picks a different head.",
+      "arrival": [
+        {
+          "id": "e1",
+          "author": "alice",
+          "type": "review.created",
+          "at": "2026-01-01T10:00:00Z",
+          "payload": {
+            "entity": "cnpj:1",
+            "rating": 2,
+            "body": "v1"
+          }
+        },
+        {
+          "id": "e2a",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-02T10:00:00Z",
+          "payload": {
+            "replaces": "e1",
+            "rating": 3,
+            "body": "branch A"
+          }
+        },
+        {
+          "id": "e2b",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-05T10:00:00Z",
+          "payload": {
+            "replaces": "e1",
+            "rating": 5,
+            "body": "branch B"
+          }
+        }
+      ],
+      "expect": {
+        "head": "e2b",
+        "losingBranch": [
+          "e2a"
+        ],
+        "withdrawn": false,
+        "truncated": false
+      }
+    },
+    {
+      "name": "fork tied on createdAt, broken by lower eventId",
+      "why": "The tiebreak has to be deterministic and clock-free, otherwise arrival order decides and two nodes diverge.",
+      "arrival": [
+        {
+          "id": "e1",
+          "author": "alice",
+          "type": "review.created",
+          "at": "2026-01-01T10:00:00Z",
+          "payload": {
+            "entity": "cnpj:1",
+            "rating": 2,
+            "body": "v1"
+          }
+        },
+        {
+          "id": "e2z",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-02T10:00:00Z",
+          "payload": {
+            "replaces": "e1",
+            "rating": 3,
+            "body": "branch Z"
+          }
+        },
+        {
+          "id": "e2a",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-02T10:00:00Z",
+          "payload": {
+            "replaces": "e1",
+            "rating": 4,
+            "body": "branch A"
+          }
+        }
+      ],
+      "expect": {
+        "head": "e2a",
+        "losingBranch": [
+          "e2z"
+        ],
+        "tiebreak": "lexicographically lower id",
+        "withdrawn": false,
+        "truncated": false
+      }
+    },
+    {
+      "name": "reversed arrival order does not change the head",
+      "why": "This rule is self-scoped and must be immune to observation order. If the head shifts with arrival order, the projection has stopped being deterministic.",
+      "arrival": [
+        {
+          "id": "e3",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-03T10:00:00Z",
+          "payload": {
+            "replaces": "e2",
+            "rating": 4,
+            "body": "v3"
+          }
+        },
+        {
+          "id": "e1",
+          "author": "alice",
+          "type": "review.created",
+          "at": "2026-01-01T10:00:00Z",
+          "payload": {
+            "entity": "cnpj:1",
+            "rating": 2,
+            "body": "v1"
+          }
+        },
+        {
+          "id": "e2",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-02T10:00:00Z",
+          "payload": {
+            "replaces": "e1",
+            "rating": 3,
+            "body": "v2"
+          }
+        }
+      ],
+      "expect": {
+        "head": "e3",
+        "chain": [
+          "e1",
+          "e2",
+          "e3"
+        ],
+        "note": "identical to the linear case, despite the order"
+      }
+    },
+    {
+      "name": "chain beyond the 64-link cap",
+      "why": "A pathological chain must not turn rendering a page into unbounded work. Past the cap the projection reports truncation instead of guessing a head.",
+      "arrival": [
+        {
+          "id": "e1",
+          "author": "alice",
+          "type": "review.created",
+          "at": "2026-01-01T10:00:00Z",
+          "payload": {
+            "entity": "cnpj:1",
+            "rating": 2,
+            "body": "v1"
+          }
+        },
+        {
+          "id": "e2",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-01T10:02:00Z",
+          "payload": {
+            "replaces": "e1",
+            "rating": 3,
+            "body": "v2"
+          }
+        },
+        {
+          "id": "e3",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-01T10:03:00Z",
+          "payload": {
+            "replaces": "e2",
+            "rating": 3,
+            "body": "v3"
+          }
+        },
+        {
+          "id": "e4",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-01T10:04:00Z",
+          "payload": {
+            "replaces": "e3",
+            "rating": 3,
+            "body": "v4"
+          }
+        },
+        {
+          "id": "e5",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-01T10:05:00Z",
+          "payload": {
+            "replaces": "e4",
+            "rating": 3,
+            "body": "v5"
+          }
+        },
+        {
+          "id": "e6",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-01T10:06:00Z",
+          "payload": {
+            "replaces": "e5",
+            "rating": 3,
+            "body": "v6"
+          }
+        },
+        {
+          "id": "e7",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-01T10:07:00Z",
+          "payload": {
+            "replaces": "e6",
+            "rating": 3,
+            "body": "v7"
+          }
+        },
+        {
+          "id": "e8",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-01T10:08:00Z",
+          "payload": {
+            "replaces": "e7",
+            "rating": 3,
+            "body": "v8"
+          }
+        },
+        {
+          "id": "e9",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-01T10:09:00Z",
+          "payload": {
+            "replaces": "e8",
+            "rating": 3,
+            "body": "v9"
+          }
+        },
+        {
+          "id": "e10",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-01T10:10:00Z",
+          "payload": {
+            "replaces": "e9",
+            "rating": 3,
+            "body": "v10"
+          }
+        },
+        {
+          "id": "e11",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-01T10:11:00Z",
+          "payload": {
+            "replaces": "e10",
+            "rating": 3,
+            "body": "v11"
+          }
+        },
+        {
+          "id": "e12",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-01T10:12:00Z",
+          "payload": {
+            "replaces": "e11",
+            "rating": 3,
+            "body": "v12"
+          }
+        },
+        {
+          "id": "e13",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-01T10:13:00Z",
+          "payload": {
+            "replaces": "e12",
+            "rating": 3,
+            "body": "v13"
+          }
+        },
+        {
+          "id": "e14",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-01T10:14:00Z",
+          "payload": {
+            "replaces": "e13",
+            "rating": 3,
+            "body": "v14"
+          }
+        },
+        {
+          "id": "e15",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-01T10:15:00Z",
+          "payload": {
+            "replaces": "e14",
+            "rating": 3,
+            "body": "v15"
+          }
+        },
+        {
+          "id": "e16",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-01T10:16:00Z",
+          "payload": {
+            "replaces": "e15",
+            "rating": 3,
+            "body": "v16"
+          }
+        },
+        {
+          "id": "e17",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-01T10:17:00Z",
+          "payload": {
+            "replaces": "e16",
+            "rating": 3,
+            "body": "v17"
+          }
+        },
+        {
+          "id": "e18",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-01T10:18:00Z",
+          "payload": {
+            "replaces": "e17",
+            "rating": 3,
+            "body": "v18"
+          }
+        },
+        {
+          "id": "e19",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-01T10:19:00Z",
+          "payload": {
+            "replaces": "e18",
+            "rating": 3,
+            "body": "v19"
+          }
+        },
+        {
+          "id": "e20",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-01T10:20:00Z",
+          "payload": {
+            "replaces": "e19",
+            "rating": 3,
+            "body": "v20"
+          }
+        },
+        {
+          "id": "e21",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-01T10:21:00Z",
+          "payload": {
+            "replaces": "e20",
+            "rating": 3,
+            "body": "v21"
+          }
+        },
+        {
+          "id": "e22",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-01T10:22:00Z",
+          "payload": {
+            "replaces": "e21",
+            "rating": 3,
+            "body": "v22"
+          }
+        },
+        {
+          "id": "e23",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-01T10:23:00Z",
+          "payload": {
+            "replaces": "e22",
+            "rating": 3,
+            "body": "v23"
+          }
+        },
+        {
+          "id": "e24",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-01T10:24:00Z",
+          "payload": {
+            "replaces": "e23",
+            "rating": 3,
+            "body": "v24"
+          }
+        },
+        {
+          "id": "e25",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-01T10:25:00Z",
+          "payload": {
+            "replaces": "e24",
+            "rating": 3,
+            "body": "v25"
+          }
+        },
+        {
+          "id": "e26",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-01T10:26:00Z",
+          "payload": {
+            "replaces": "e25",
+            "rating": 3,
+            "body": "v26"
+          }
+        },
+        {
+          "id": "e27",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-01T10:27:00Z",
+          "payload": {
+            "replaces": "e26",
+            "rating": 3,
+            "body": "v27"
+          }
+        },
+        {
+          "id": "e28",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-01T10:28:00Z",
+          "payload": {
+            "replaces": "e27",
+            "rating": 3,
+            "body": "v28"
+          }
+        },
+        {
+          "id": "e29",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-01T10:29:00Z",
+          "payload": {
+            "replaces": "e28",
+            "rating": 3,
+            "body": "v29"
+          }
+        },
+        {
+          "id": "e30",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-01T10:30:00Z",
+          "payload": {
+            "replaces": "e29",
+            "rating": 3,
+            "body": "v30"
+          }
+        },
+        {
+          "id": "e31",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-01T10:31:00Z",
+          "payload": {
+            "replaces": "e30",
+            "rating": 3,
+            "body": "v31"
+          }
+        },
+        {
+          "id": "e32",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-01T10:32:00Z",
+          "payload": {
+            "replaces": "e31",
+            "rating": 3,
+            "body": "v32"
+          }
+        },
+        {
+          "id": "e33",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-01T10:33:00Z",
+          "payload": {
+            "replaces": "e32",
+            "rating": 3,
+            "body": "v33"
+          }
+        },
+        {
+          "id": "e34",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-01T10:34:00Z",
+          "payload": {
+            "replaces": "e33",
+            "rating": 3,
+            "body": "v34"
+          }
+        },
+        {
+          "id": "e35",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-01T10:35:00Z",
+          "payload": {
+            "replaces": "e34",
+            "rating": 3,
+            "body": "v35"
+          }
+        },
+        {
+          "id": "e36",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-01T10:36:00Z",
+          "payload": {
+            "replaces": "e35",
+            "rating": 3,
+            "body": "v36"
+          }
+        },
+        {
+          "id": "e37",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-01T10:37:00Z",
+          "payload": {
+            "replaces": "e36",
+            "rating": 3,
+            "body": "v37"
+          }
+        },
+        {
+          "id": "e38",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-01T10:38:00Z",
+          "payload": {
+            "replaces": "e37",
+            "rating": 3,
+            "body": "v38"
+          }
+        },
+        {
+          "id": "e39",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-01T10:39:00Z",
+          "payload": {
+            "replaces": "e38",
+            "rating": 3,
+            "body": "v39"
+          }
+        },
+        {
+          "id": "e40",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-01T10:40:00Z",
+          "payload": {
+            "replaces": "e39",
+            "rating": 3,
+            "body": "v40"
+          }
+        },
+        {
+          "id": "e41",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-01T10:41:00Z",
+          "payload": {
+            "replaces": "e40",
+            "rating": 3,
+            "body": "v41"
+          }
+        },
+        {
+          "id": "e42",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-01T10:42:00Z",
+          "payload": {
+            "replaces": "e41",
+            "rating": 3,
+            "body": "v42"
+          }
+        },
+        {
+          "id": "e43",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-01T10:43:00Z",
+          "payload": {
+            "replaces": "e42",
+            "rating": 3,
+            "body": "v43"
+          }
+        },
+        {
+          "id": "e44",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-01T10:44:00Z",
+          "payload": {
+            "replaces": "e43",
+            "rating": 3,
+            "body": "v44"
+          }
+        },
+        {
+          "id": "e45",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-01T10:45:00Z",
+          "payload": {
+            "replaces": "e44",
+            "rating": 3,
+            "body": "v45"
+          }
+        },
+        {
+          "id": "e46",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-01T10:46:00Z",
+          "payload": {
+            "replaces": "e45",
+            "rating": 3,
+            "body": "v46"
+          }
+        },
+        {
+          "id": "e47",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-01T10:47:00Z",
+          "payload": {
+            "replaces": "e46",
+            "rating": 3,
+            "body": "v47"
+          }
+        },
+        {
+          "id": "e48",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-01T10:48:00Z",
+          "payload": {
+            "replaces": "e47",
+            "rating": 3,
+            "body": "v48"
+          }
+        },
+        {
+          "id": "e49",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-01T10:49:00Z",
+          "payload": {
+            "replaces": "e48",
+            "rating": 3,
+            "body": "v49"
+          }
+        },
+        {
+          "id": "e50",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-01T10:50:00Z",
+          "payload": {
+            "replaces": "e49",
+            "rating": 3,
+            "body": "v50"
+          }
+        },
+        {
+          "id": "e51",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-01T10:51:00Z",
+          "payload": {
+            "replaces": "e50",
+            "rating": 3,
+            "body": "v51"
+          }
+        },
+        {
+          "id": "e52",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-01T10:52:00Z",
+          "payload": {
+            "replaces": "e51",
+            "rating": 3,
+            "body": "v52"
+          }
+        },
+        {
+          "id": "e53",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-01T10:53:00Z",
+          "payload": {
+            "replaces": "e52",
+            "rating": 3,
+            "body": "v53"
+          }
+        },
+        {
+          "id": "e54",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-01T10:54:00Z",
+          "payload": {
+            "replaces": "e53",
+            "rating": 3,
+            "body": "v54"
+          }
+        },
+        {
+          "id": "e55",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-01T10:55:00Z",
+          "payload": {
+            "replaces": "e54",
+            "rating": 3,
+            "body": "v55"
+          }
+        },
+        {
+          "id": "e56",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-01T10:56:00Z",
+          "payload": {
+            "replaces": "e55",
+            "rating": 3,
+            "body": "v56"
+          }
+        },
+        {
+          "id": "e57",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-01T10:57:00Z",
+          "payload": {
+            "replaces": "e56",
+            "rating": 3,
+            "body": "v57"
+          }
+        },
+        {
+          "id": "e58",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-01T10:58:00Z",
+          "payload": {
+            "replaces": "e57",
+            "rating": 3,
+            "body": "v58"
+          }
+        },
+        {
+          "id": "e59",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-01T10:59:00Z",
+          "payload": {
+            "replaces": "e58",
+            "rating": 3,
+            "body": "v59"
+          }
+        },
+        {
+          "id": "e60",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-01T10:60:00Z",
+          "payload": {
+            "replaces": "e59",
+            "rating": 3,
+            "body": "v60"
+          }
+        },
+        {
+          "id": "e61",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-01T10:61:00Z",
+          "payload": {
+            "replaces": "e60",
+            "rating": 3,
+            "body": "v61"
+          }
+        },
+        {
+          "id": "e62",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-01T10:62:00Z",
+          "payload": {
+            "replaces": "e61",
+            "rating": 3,
+            "body": "v62"
+          }
+        },
+        {
+          "id": "e63",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-01T10:63:00Z",
+          "payload": {
+            "replaces": "e62",
+            "rating": 3,
+            "body": "v63"
+          }
+        },
+        {
+          "id": "e64",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-01T10:64:00Z",
+          "payload": {
+            "replaces": "e63",
+            "rating": 3,
+            "body": "v64"
+          }
+        },
+        {
+          "id": "e65",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-01T10:65:00Z",
+          "payload": {
+            "replaces": "e64",
+            "rating": 3,
+            "body": "v65"
+          }
+        },
+        {
+          "id": "e66",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-01T10:66:00Z",
+          "payload": {
+            "replaces": "e65",
+            "rating": 3,
+            "body": "v66"
+          }
+        },
+        {
+          "id": "e67",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-01T10:67:00Z",
+          "payload": {
+            "replaces": "e66",
+            "rating": 3,
+            "body": "v67"
+          }
+        }
+      ],
+      "expect": {
+        "truncated": true,
+        "walkedLinks": 64,
+        "note": "no head is asserted once the chain exceeds the cap"
+      }
+    },
+    {
+      "name": "withdrawal targeting a middle link withdraws the whole chain",
+      "why": "If withdrawal applied only to the targeted version, it would hide one link while the rest stayed readable — which is not withdrawing.",
+      "arrival": [
+        {
+          "id": "e1",
+          "author": "alice",
+          "type": "review.created",
+          "at": "2026-01-01T10:00:00Z",
+          "payload": {
+            "entity": "cnpj:1",
+            "rating": 2,
+            "body": "v1"
+          }
+        },
+        {
+          "id": "e2",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-02T10:00:00Z",
+          "payload": {
+            "replaces": "e1",
+            "rating": 3,
+            "body": "v2"
+          }
+        },
+        {
+          "id": "e3",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-03T10:00:00Z",
+          "payload": {
+            "replaces": "e2",
+            "rating": 4,
+            "body": "v3"
+          }
+        },
+        {
+          "id": "w1",
+          "author": "alice",
+          "type": "review.withdrawn",
+          "at": "2026-01-04T10:00:00Z",
+          "payload": {
+            "target": "e2",
+            "reason": "privacy"
+          }
+        }
+      ],
+      "expect": {
+        "head": "e3",
+        "withdrawn": true,
+        "withdrawnChain": [
+          "e1",
+          "e2",
+          "e3"
+        ],
+        "note": "nothing is deleted; the chain is hidden by default"
+      }
+    },
+    {
+      "name": "an edit published after withdrawal does not revive the chain",
+      "why": "Otherwise editing would be enough to undo a withdrawal.",
+      "arrival": [
+        {
+          "id": "e1",
+          "author": "alice",
+          "type": "review.created",
+          "at": "2026-01-01T10:00:00Z",
+          "payload": {
+            "entity": "cnpj:1",
+            "rating": 2,
+            "body": "v1"
+          }
+        },
+        {
+          "id": "w1",
+          "author": "alice",
+          "type": "review.withdrawn",
+          "at": "2026-01-02T10:00:00Z",
+          "payload": {
+            "target": "e1"
+          }
+        },
+        {
+          "id": "e2",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-03T10:00:00Z",
+          "payload": {
+            "replaces": "e1",
+            "rating": 5,
+            "body": "back again"
+          }
+        }
+      ],
+      "expect": {
+        "head": "e2",
+        "withdrawn": true,
+        "note": "the chain stays withdrawn despite the new link"
+      }
+    }
+  ]
+}
