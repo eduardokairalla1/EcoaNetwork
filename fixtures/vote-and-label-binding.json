@@ -1,0 +1,394 @@
+{
+  "topic": "Votes bind to a version; labels and responses bind to the chain",
+  "rule": "docs/protocol.md#votes-do-not-follow-an-edit",
+  "$comment": "The asymmetry is deliberate: credit binds to the version that earned it, warnings and conversation bind to the thing. Anything the author would gain by editing must not survive the edit; anything they could escape by editing must.",
+  "cases": [
+    {
+      "name": "endorsements do not follow an edit",
+      "why": "Without this there is a clean bait-and-switch: publish something agreeable, collect endorsements, swap the text, keep the borrowed credibility.",
+      "arrival": [
+        {
+          "id": "e1",
+          "author": "alice",
+          "type": "review.created",
+          "at": "2026-01-01T10:00:00Z",
+          "payload": {
+            "entity": "cnpj:1",
+            "rating": 2,
+            "body": "v1"
+          }
+        },
+        {
+          "id": "v1",
+          "author": "bob",
+          "type": "review.endorsed",
+          "at": "2026-01-02T10:00:00Z",
+          "payload": {
+            "target": "e1"
+          }
+        },
+        {
+          "id": "v2",
+          "author": "carol",
+          "type": "review.endorsed",
+          "at": "2026-01-03T10:00:00Z",
+          "payload": {
+            "target": "e1"
+          }
+        },
+        {
+          "id": "e2",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-05T10:00:00Z",
+          "payload": {
+            "replaces": "e1",
+            "rating": 4,
+            "body": "v2"
+          }
+        }
+      ],
+      "expect": {
+        "head": "e2",
+        "headScore": {
+          "endorsed": [],
+          "disputed": []
+        },
+        "historical": {
+          "e1": {
+            "endorsed": [
+              "bob",
+              "carol"
+            ]
+          }
+        },
+        "note": "both endorsements stay visible as chain history, and neither counts toward the head"
+      }
+    },
+    {
+      "name": "a vote on the head counts normally",
+      "why": "The other half of the rule: the displayed score is always the score of the text on screen.",
+      "arrival": [
+        {
+          "id": "e1",
+          "author": "alice",
+          "type": "review.created",
+          "at": "2026-01-01T10:00:00Z",
+          "payload": {
+            "entity": "cnpj:1",
+            "rating": 2,
+            "body": "v1"
+          }
+        },
+        {
+          "id": "e2",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-05T10:00:00Z",
+          "payload": {
+            "replaces": "e1",
+            "rating": 4,
+            "body": "v2"
+          }
+        },
+        {
+          "id": "v3",
+          "author": "bob",
+          "type": "review.endorsed",
+          "at": "2026-01-06T10:00:00Z",
+          "payload": {
+            "target": "e2"
+          }
+        }
+      ],
+      "expect": {
+        "head": "e2",
+        "headScore": {
+          "endorsed": [
+            "bob"
+          ],
+          "disputed": []
+        }
+      }
+    },
+    {
+      "name": "a label applied to one version still applies after an edit",
+      "why": "If a label bound to a version, clearing a spam label would cost one character of editing and moderation would be defeated by the cheapest available action.",
+      "arrival": [
+        {
+          "id": "e1",
+          "author": "alice",
+          "type": "review.created",
+          "at": "2026-01-01T10:00:00Z",
+          "payload": {
+            "entity": "cnpj:1",
+            "rating": 2,
+            "body": "v1"
+          }
+        },
+        {
+          "id": "l1",
+          "author": "mod",
+          "type": "moderation.label_created",
+          "at": "2026-01-02T10:00:00Z",
+          "payload": {
+            "target": "e1",
+            "label": "spam"
+          }
+        },
+        {
+          "id": "e2",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-05T10:00:00Z",
+          "payload": {
+            "replaces": "e1",
+            "rating": 4,
+            "body": "v2"
+          }
+        }
+      ],
+      "expect": {
+        "head": "e2",
+        "labelsOnHead": [
+          {
+            "id": "l1",
+            "label": "spam",
+            "by": "mod"
+          }
+        ],
+        "note": "the label reaches the head even though it was applied to v1"
+      }
+    },
+    {
+      "name": "only the moderator clears their own label",
+      "why": "Revoking is a decision by a person, never a side effect of the author's edit.",
+      "arrival": [
+        {
+          "id": "e1",
+          "author": "alice",
+          "type": "review.created",
+          "at": "2026-01-01T10:00:00Z",
+          "payload": {
+            "entity": "cnpj:1",
+            "rating": 2,
+            "body": "v1"
+          }
+        },
+        {
+          "id": "l1",
+          "author": "mod",
+          "type": "moderation.label_created",
+          "at": "2026-01-02T10:00:00Z",
+          "payload": {
+            "target": "e1",
+            "label": "spam"
+          }
+        },
+        {
+          "id": "e2",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-05T10:00:00Z",
+          "payload": {
+            "replaces": "e1",
+            "rating": 4,
+            "body": "v2"
+          }
+        },
+        {
+          "id": "l2",
+          "author": "mod",
+          "type": "moderation.label_revoked",
+          "at": "2026-01-06T10:00:00Z",
+          "payload": {
+            "target": "l1"
+          }
+        }
+      ],
+      "expect": {
+        "head": "e2",
+        "labelsOnHead": []
+      }
+    },
+    {
+      "name": "a response to an older version stays attached to the chain",
+      "why": "The company replied to the complaint as a thing, not to one revision of its wording.",
+      "arrival": [
+        {
+          "id": "e1",
+          "author": "alice",
+          "type": "review.created",
+          "at": "2026-01-01T10:00:00Z",
+          "payload": {
+            "entity": "cnpj:1",
+            "rating": 2,
+            "body": "v1"
+          }
+        },
+        {
+          "id": "r1",
+          "author": "company",
+          "type": "review.response_created",
+          "at": "2026-01-02T10:00:00Z",
+          "payload": {
+            "target": "e1",
+            "body": "We will look into it."
+          }
+        },
+        {
+          "id": "e2",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-05T10:00:00Z",
+          "payload": {
+            "replaces": "e1",
+            "rating": 4,
+            "body": "v2"
+          }
+        }
+      ],
+      "expect": {
+        "head": "e2",
+        "responsesOnHead": [
+          "r1"
+        ],
+        "respondedTo": "e1",
+        "textChangedSinceResponse": true,
+        "note": "the client should surface that the text changed since the response"
+      }
+    },
+    {
+      "name": "a repeated vote from one identity counts once",
+      "why": "Voting 500 times must not move the score beyond that identity's weight.",
+      "arrival": [
+        {
+          "id": "e1",
+          "author": "alice",
+          "type": "review.created",
+          "at": "2026-01-01T10:00:00Z",
+          "payload": {
+            "entity": "cnpj:1",
+            "rating": 2,
+            "body": "v1"
+          }
+        },
+        {
+          "id": "v1",
+          "author": "bob",
+          "type": "review.endorsed",
+          "at": "2026-01-02T10:00:00Z",
+          "payload": {
+            "target": "e1"
+          }
+        },
+        {
+          "id": "v2",
+          "author": "bob",
+          "type": "review.disputed",
+          "at": "2026-01-03T10:00:00Z",
+          "payload": {
+            "target": "e1"
+          }
+        },
+        {
+          "id": "v3",
+          "author": "bob",
+          "type": "review.endorsed",
+          "at": "2026-01-04T10:00:00Z",
+          "payload": {
+            "target": "e1"
+          }
+        }
+      ],
+      "expect": {
+        "head": "e1",
+        "headScore": {
+          "endorsed": [
+            "bob"
+          ],
+          "disputed": []
+        },
+        "countedVote": "v3",
+        "note": "the latest by createdAt wins; bob counts once, not three times"
+      }
+    },
+    {
+      "name": "votes tied on createdAt break on the lower eventId",
+      "why": "Same determinism requirement as the chain fork: without a tiebreak, arrival order decides.",
+      "arrival": [
+        {
+          "id": "e1",
+          "author": "alice",
+          "type": "review.created",
+          "at": "2026-01-01T10:00:00Z",
+          "payload": {
+            "entity": "cnpj:1",
+            "rating": 2,
+            "body": "v1"
+          }
+        },
+        {
+          "id": "vz",
+          "author": "bob",
+          "type": "review.disputed",
+          "at": "2026-01-02T10:00:00Z",
+          "payload": {
+            "target": "e1"
+          }
+        },
+        {
+          "id": "va",
+          "author": "bob",
+          "type": "review.endorsed",
+          "at": "2026-01-02T10:00:00Z",
+          "payload": {
+            "target": "e1"
+          }
+        }
+      ],
+      "expect": {
+        "head": "e1",
+        "countedVote": "va",
+        "headScore": {
+          "endorsed": [
+            "bob"
+          ],
+          "disputed": []
+        }
+      }
+    },
+    {
+      "name": "a vote on a target with no display surface is stored and ignored",
+      "why": "Permitting it in the format keeps the door open for a future type; ignoring it at projection stops score accumulating where nobody reads it.",
+      "arrival": [
+        {
+          "id": "p1",
+          "author": "alice",
+          "type": "profile.updated",
+          "at": "2026-01-01T10:00:00Z",
+          "payload": {
+            "displayName": "Alice"
+          }
+        },
+        {
+          "id": "v1",
+          "author": "bob",
+          "type": "review.endorsed",
+          "at": "2026-01-02T10:00:00Z",
+          "payload": {
+            "target": "p1"
+          }
+        }
+      ],
+      "expect": {
+        "stored": [
+          "p1",
+          "v1"
+        ],
+        "counted": [],
+        "note": "valid in the format, no effect on the projection"
+      }
+    }
+  ]
+}
