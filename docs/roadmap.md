@@ -48,7 +48,7 @@ Nothing here is code, and none of it can be deferred past the first line of it.
 | Decision | Why it can't wait |
 |---|---|
 | ~~Payload schema per event type~~ | **Settled** ([protocol.md](./protocol.md#payloads)) — no longer a blocker. The remaining decisions below are all about implementation, not design. |
-| **Language for the node** | `go-libp2p` is the most mature implementation, `rust-libp2p` is solid, `js-libp2p` is the weakest of the three exactly where this project leans hardest — long-lived connections and sync. This choice interacts directly with the largest risk on the board. |
+| ~~Language for the node~~ | **Settled: Go**, with `ed25519consensus` for verification and `gowebpki/jcs` for canonicalization ([decisions.md](./decisions.md#132-the-node-is-written-in-go--call)). `go-libp2p` being the reference implementation is the cheapest available reduction of the largest risk on the board. |
 | **Language for gateway, indexer, client** | Independent of the node — they speak HTTP and SQL, not libp2p. Can be whatever you're fastest in. |
 | **Development network name** | `ecoa-dev`, or whatever you pick. It goes inside the signed bytes ([protocol.md](./protocol.md#network-separation)), so choosing it after events exist means re-signing all of them. |
 | **Which metrics to collect** | See [the academic track](#academic-track-runs-in-parallel). Deciding now means counters get written alongside the code that needs them. |
