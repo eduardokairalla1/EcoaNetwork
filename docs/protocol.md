@@ -117,7 +117,8 @@ The `eventId` is attacker-controlled until step 7 recomputes it, so step 4 is a 
 `protocol` is not decoration and it is not always the literal string `ecoa`. It names **which network** an event belongs to, and it sits inside the signed bytes.
 
 - `ecoa` — the main network.
-- `ecoa-<name>` — anything else: `ecoa-testnet`, `ecoa-dev`, a private deployment, a classroom.
+- `ecoa-dev` — the development network, and the only one that exists today.
+- `ecoa-<name>` — anything else: a private deployment, a classroom, a second test network.
 
 A node is configured for exactly one network and rejects everything else at step 2, before any other work.
 
