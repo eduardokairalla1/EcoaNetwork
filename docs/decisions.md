@@ -416,7 +416,7 @@ Worse, the rule contradicted the document's own general principle, which already
 
 Both would partition the network rather than compromise a key, which is the failure mode that only shows up in production and is hardest to diagnose.
 
-**Ed25519 verification isn't uniform across libraries.** Cofactored versus cofactorless verification, small-order keys, non-canonical `S` — each accepted by some implementations and rejected by others. Now pinned to the strict rules (reject non-canonical `S`, reject small-order points, verify cofactorlessly), with `did:key` decoding held to the same standard, and a signature test-vector set promoted to a Phase 0 deliverable.
+**Ed25519 verification isn't uniform across libraries.** Cofactored versus cofactorless verification, small-order points, non-canonical encodings — each handled differently by different implementations. Pinned to a single rule set, with a signature test-vector set promoted to a Phase 0 deliverable. (The rule set chosen here was *wrong* on the first attempt and is corrected in §13.1 — it asked for cofactorless verification, which is the one choice that guarantees disagreement.)
 
 **JSON parsing happens before canonicalization.** Duplicate object keys are resolved differently by different parsers — first wins, last wins, or error — so two implementations compute different digests for identical bytes. Duplicate keys are now rejected outright. Nesting depth is capped at 32 in the same breath, since the 16 KB ceiling bounds size but not structure, and thousands of levels fit inside it — enough to overflow a recursive canonicalizer's stack *before* any signature is checked, which is the cheapest possible denial of service.
 
@@ -491,6 +491,31 @@ Seventeen values, no hierarchy. A free string means everyone invents their own a
 - **No avatar and no links on a profile.** Attachments are out of v1 scope, and an unverified link field on a public profile is a phishing surface that costs nothing to omit.
 - **`lang` is optional and exists for search quality.** Portuguese and English stem differently and automatic detection is wrong often enough to matter on short text. An indexer that ignores it loses only relevance.
 - **`device.label` is optional and warned about.** Device names leak more than people expect, and the event is permanent.
+
+## 13. Stack for the node
+
+The first stack decision, taken when the node phase was picked up rather than in advance. It brought one correction with it.
+
+### 13.1 Verification is ZIP-215, not "as strict as possible" — **bug**
+
+§11.3 pinned Ed25519 verification to three rules: reject non-canonical `S`, reject small-order points, and verify **cofactorlessly**. Researching Go libraries to implement it surfaced that two of the three were wrong, and wrong in the direction that causes the exact failure the rule existed to prevent.
+
+**ZIP-215 is cofactored.** Cofactorless verification is the choice whose result depends on whether a small-order component happens to be present — the textbook way two honest implementations end up disagreeing about the same bytes. Asking for it while citing ZIP-215 as the justification was a straightforward error.
+
+The rules, corrected:
+
+| | Old (wrong) | ZIP-215 |
+|---|---|---|
+| Equation | cofactorless | **cofactored**, `[8]R = [8]([s]B − [k]A)` |
+| Scalar `S` | reject non-canonical | reject non-canonical — unchanged |
+| Point encodings | reject non-canonical | **accepted**, if they decode at all |
+| Small-order points | reject | **not rejected** |
+
+**The underlying mistake was conflating two goals.** Rejecting everything questionable buys *signature binding*: no second valid signature over the same message. Making every implementation agree buys *consensus*. They are different properties with different rule sets, and the section asked for the first while arguing for the second.
+
+This project needs only consensus — and it already has binding from elsewhere, because `signature` is outside the `eventId` digest (§1.1), so a mauled signature produces the same `eventId` and is discarded as a duplicate. A decision taken for one reason turned out to cover a second.
+
+`did:key` decoding stays strict, and that is not in tension: canonical multibase is about identities comparing as exact strings, not about which signatures verify.
 
 ## Still open, and owned by the project
 
