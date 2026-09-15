@@ -63,7 +63,7 @@ The interop contract. Everything downstream is tested against these, and for an 
 
 1. **JSON Schema per event type** — a mechanical transcription of [the payload spec](./protocol.md#payloads), including the enums and the per-field length limits.
 2. **Canonicalization and signing test vectors** — input object, expected JCS bytes, expected `signing_input`, expected `eventId`, expected signature. This is what makes two independent implementations provably compatible.
-3. **Strict-signature vectors** — the malleability cases specifically: non-canonical `S`, small-order keys, small-order `R`. Each must be *rejected*, and a permissive library will pass them, which is the whole point of having the vectors ([protocol.md](./protocol.md#signature-verification-must-be-strict)).
+3. **ZIP-215 signature vectors** — the edge cases where implementations disagree, each with its expected verdict ([protocol.md](./protocol.md#signature-verification-follows-zip-215)). Note that these are *not* all rejections: non-canonical `S` must be rejected, but a non-canonical point encoding and a small-order point must be **accepted**, and a stricter library will fail those. Getting a vector's expected verdict backwards here produces exactly the partition the vectors exist to prevent.
 4. **Behavioral fixtures** for the rules that are easy to implement subtly differently: chain head resolution with a fork, conflicting rotations, orphan buffering and release, vote-to-version binding across an edit, per-field entity resolution.
 
 **Done when:** a fixture file exists for each, with expected outputs, runnable before any implementation exists.
