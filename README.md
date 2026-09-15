@@ -17,3 +17,8 @@ Every experience leaves an echo.
 - [Roadmap](docs/roadmap.md) — what to build, in what order, and why that order
 - [Related work](docs/related-work.md) — Nostr, AT Protocol, SSB and ActivityPub, and where this project sits
 - [Decision log](docs/decisions.md) — every architectural decision taken in review, with its cost and what was rejected
+
+## Artifacts
+
+- [`schemas/`](schemas/) — JSON Schema for the envelope and all 18 event types, transcribed from the specification
+- [`fixtures/`](fixtures/) — behavioural cases for the rules that are easy to implement subtly differently
