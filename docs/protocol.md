@@ -338,6 +338,8 @@ Every payload, and the conventions they all share. `rating` gets its own section
 
 **Every string is NFC-normalized, trimmed, and free of control characters**, with its own length limit in the tables below. Without per-field limits the 16 KB envelope ceiling is the only bound, which means one field can consume the whole event.
 
+Control characters have one exception, and it is worth naming because a schema has to encode it: a **multi-line** field — `body`, `bio`, `description`, `note` — permits the newline `U+000A` and nothing else. A **single-line** field — `title`, `name`, `displayName`, `label` — permits no control character at all. A review body legitimately contains line breaks; a company name does not.
+
 **Replacement is total, not a patch** — `review.replaced` and `profile.updated` carry the complete new content, and an omitted field is cleared rather than left alone. Patches need merge semantics and an ordering to merge along; total replacement is unambiguous, and the chain already preserves every earlier version.
 
 `entity.updated` is the deliberate exception: it is resolved **per field** ([docs/entities.md](./entities.md#2-unverified-edit--a-proposal-not-a-fact)), so it has to distinguish a field the author actually asserted from one they said nothing about. Under total replacement every proposal would implicitly assert *"and everything else should be empty."*
