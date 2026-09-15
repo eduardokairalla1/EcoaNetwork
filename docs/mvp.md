@@ -57,7 +57,7 @@ The MVP is done when:
 - An event whose reference arrives out of order (a vote before its review) is buffered and accepted once the target lands, rather than dropped.
 - A node that has accepted an `identity.key_rotated` rejects a later conflicting one, whatever its `eventId`; a node that receives both at once treats the identity as contested and honors neither successor.
 - An event from a different network (`protocol` mismatch) is ignored and never relayed, even though its signature is valid.
-- A signature that a permissive Ed25519 implementation would accept — non-canonical `S`, a small-order key — is rejected, and two independently-built nodes agree on every signature in the test-vector set.
+- Two independently-built nodes agree on every signature in the ZIP-215 test-vector set, accepting and rejecting exactly the same ones — including the cases where ZIP-215 deliberately *accepts* what a stricter rule set would reject.
 - An event whose JSON carries duplicate object keys, or nests deeper than the cap, is rejected before any signature work.
 - A review that is edited after being endorsed does not carry its endorsements onto the new version.
 - An event with an oversized payload, an unknown top-level envelope field, or a `createdAt` more than 5 minutes in the future is rejected.
@@ -109,7 +109,7 @@ Stack decisions — which language the node is written in, what the gateway/inde
 | Users lose their key, or it's stolen | **Loss:** encrypted export/backup. **Theft:** not solvable for a single-key identity — compromise is terminal, and the docs say so rather than implying otherwise. The root/device key model is the designed answer and the envelope supports it from v1 ([identity.md](./identity.md#root-key-and-device-keys)) |
 | A gateway censors an event | Multiple independent gateways, future thicker clients |
 | A gateway or node links an identity to an IP address | **Not solved in v1, and stated rather than implied.** Gateways must not log source addresses alongside event content; real network anonymity needs Tor or equivalent and is out of scope. The interface has to say so at publishing time — see [identity.md](./identity.md#and-the-network-layer-knows-more-than-the-protocol-does) |
-| Two implementations disagree about whether an event is valid, partitioning the network | Strict Ed25519 verification rules, duplicate-key rejection and a nesting cap, all pinned in [protocol.md](./protocol.md#signature-verification-must-be-strict), plus a shared test-vector set as a Phase 0 deliverable |
+| Two implementations disagree about whether an event is valid, partitioning the network | ZIP-215 verification, duplicate-key rejection and a nesting cap, all pinned in [protocol.md](./protocol.md#signature-verification-follows-zip-215), plus a shared test-vector set as a Phase 0 deliverable |
 | An indexer manipulates results | **Partially mitigated.** Client-side signature verification catches *altered* content but never *omitted* content — an indexer that silently drops results passes every cryptographic check a client can run. Real mitigations are public policies and plural indexers a client can compare; a completeness commitment is an open question, see [architecture.md](./architecture.md#integrity-is-verifiable-completeness-is-not) |
 | Low replica count / data availability | Replication policy, community nodes, monitoring |
 | Scope creep — protocol + network + client + gateway + moderation is a lot | Small MVP, phased roadmap above, and a designated cut line at Phase 4 |
