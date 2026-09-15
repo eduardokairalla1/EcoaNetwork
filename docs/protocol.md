@@ -367,7 +367,7 @@ Control characters have one exception, and it is worth naming because a schema h
 {
   "entity": "cnpj:12345678000199",
   "rating": 2,
-  "title": "Cobranca indevida por tres meses",
+  "title": "Charged for three months after cancelling",
   "body": "...",
   "lang": "pt-BR"
 }
@@ -468,7 +468,7 @@ Stating this matters because the absence of a rule is easy to misread as an over
 
 ## Identifying entities
 
-Reviews reference an entity by external identifier when one exists, to avoid duplicate/ambiguous entities like "Mercado do João" vs "Mercadinho João":
+Reviews reference an entity by external identifier when one exists, to avoid duplicate/ambiguous entities like "Joe's Market" vs "Joe's Mini Mart":
 
 | Type | Format | Normalization — mandatory before use |
 |---|---|---|
