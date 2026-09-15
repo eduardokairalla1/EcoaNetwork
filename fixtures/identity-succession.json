@@ -1,0 +1,287 @@
+{
+  "topic": "Identity succession and revocation",
+  "rule": "docs/identity.md#key-rotation",
+  "$comment": "Arrival order is the primary input here, not a detail: succession resolves by first-observed, and revocation takes effect at local observation. This is how the earlier rule — lowest eventId globally — allowed a retroactive hijack for roughly two attempts of grinding.",
+  "cases": [
+    {
+      "name": "a conflicting rotation arriving later is rejected",
+      "why": "The central case. Under the old rule, anyone recovering an old backup of the key could grind a lower eventId and take the identity along with everything published since the legitimate rotation.",
+      "arrival": [
+        {
+          "id": "rotA",
+          "author": "alice_k1",
+          "type": "identity.key_rotated",
+          "at": "2026-01-01T10:00:00Z",
+          "payload": {
+            "successor": "alice_k2"
+          }
+        },
+        {
+          "id": "aaa",
+          "author": "alice_k1",
+          "type": "identity.key_rotated",
+          "at": "2026-07-01T10:00:00Z",
+          "payload": {
+            "successor": "mallory_k"
+          }
+        }
+      ],
+      "expect": {
+        "successor": "alice_k2",
+        "contested": false,
+        "rejected": [
+          {
+            "id": "aaa",
+            "reason": "successor already observed"
+          }
+        ],
+        "note": "'aaa' sorts lower than 'rotA' and still loses — the eventId no longer decides"
+      }
+    },
+    {
+      "name": "both rotations arrive in the same back-fill",
+      "why": "A node back-filling history has no 'first observed'. Failing closed is what separates freezing an identity from transferring it.",
+      "arrival": [
+        {
+          "id": "rotA",
+          "author": "alice_k1",
+          "type": "identity.key_rotated",
+          "at": "2026-01-01T10:00:00Z",
+          "payload": {
+            "successor": "alice_k2"
+          }
+        },
+        {
+          "id": "rotB",
+          "author": "alice_k1",
+          "type": "identity.key_rotated",
+          "at": "2026-07-01T10:00:00Z",
+          "payload": {
+            "successor": "mallory_k"
+          }
+        }
+      ],
+      "expect": {
+        "contested": true,
+        "successor": null,
+        "backfill": true,
+        "historyReadable": true,
+        "acceptsNewEventsUnder": [],
+        "note": "history under alice_k1 stays readable and verifiable; nothing new is accepted under either successor"
+      }
+    },
+    {
+      "name": "transitive rotation chain",
+      "why": "Rotating twice must not fragment the identity.",
+      "arrival": [
+        {
+          "id": "r1",
+          "author": "alice_k1",
+          "type": "identity.key_rotated",
+          "at": "2026-01-01T10:00:00Z",
+          "payload": {
+            "successor": "alice_k2"
+          }
+        },
+        {
+          "id": "r2",
+          "author": "alice_k2",
+          "type": "identity.key_rotated",
+          "at": "2026-02-01T10:00:00Z",
+          "payload": {
+            "successor": "alice_k3"
+          }
+        }
+      ],
+      "expect": {
+        "successor": "alice_k3",
+        "chain": [
+          "alice_k1",
+          "alice_k2",
+          "alice_k3"
+        ],
+        "contested": false
+      }
+    },
+    {
+      "name": "a rotation forming a cycle is rejected",
+      "why": "A cycle would make chain resolution never terminate.",
+      "arrival": [
+        {
+          "id": "r1",
+          "author": "alice_k1",
+          "type": "identity.key_rotated",
+          "at": "2026-01-01T10:00:00Z",
+          "payload": {
+            "successor": "alice_k2"
+          }
+        },
+        {
+          "id": "r2",
+          "author": "alice_k2",
+          "type": "identity.key_rotated",
+          "at": "2026-02-01T10:00:00Z",
+          "payload": {
+            "successor": "alice_k1"
+          }
+        }
+      ],
+      "expect": {
+        "successor": "alice_k2",
+        "rejected": [
+          {
+            "id": "r2",
+            "reason": "cycle in succession chain"
+          }
+        ]
+      }
+    },
+    {
+      "name": "a backdated event from a revoked key is rejected",
+      "why": "In the scenario revocation exists for, the author's clock is in the attacker's hands. A createdAt-based cut would let through everything the thief dated earlier.",
+      "arrival": [
+        {
+          "id": "e1",
+          "author": "alice",
+          "type": "review.created",
+          "at": "2026-01-01T10:00:00Z",
+          "payload": {
+            "entity": "cnpj:1",
+            "rating": 2,
+            "body": "legitimate"
+          }
+        },
+        {
+          "id": "rev",
+          "author": "alice",
+          "type": "identity.key_revoked",
+          "at": "2026-06-01T10:00:00Z",
+          "payload": {
+            "reason": "compromised"
+          }
+        },
+        {
+          "id": "e2",
+          "author": "alice",
+          "type": "review.created",
+          "at": "2026-03-01T10:00:00Z",
+          "payload": {
+            "entity": "cnpj:1",
+            "rating": 5,
+            "body": "backdated by the thief"
+          }
+        }
+      ],
+      "expect": {
+        "accepted": [
+          "e1",
+          "rev"
+        ],
+        "rejected": [
+          {
+            "id": "e2",
+            "reason": "signing key revoked before this node observed the event"
+          }
+        ],
+        "note": "e2 claims to predate the revocation and arrives after it; the claimed date is irrelevant"
+      }
+    },
+    {
+      "name": "an event accepted before the revocation stays valid",
+      "why": "Revocation is a full stop going forward, never a retroactive erasure of history.",
+      "arrival": [
+        {
+          "id": "e1",
+          "author": "alice",
+          "type": "review.created",
+          "at": "2026-01-01T10:00:00Z",
+          "payload": {
+            "entity": "cnpj:1",
+            "rating": 2,
+            "body": "legitimate"
+          }
+        },
+        {
+          "id": "rev",
+          "author": "alice",
+          "type": "identity.key_revoked",
+          "at": "2026-06-01T10:00:00Z",
+          "payload": {
+            "reason": "lost"
+          }
+        }
+      ],
+      "expect": {
+        "accepted": [
+          "e1",
+          "rev"
+        ],
+        "stillValid": [
+          "e1"
+        ],
+        "acceptsNewEventsFrom": []
+      }
+    },
+    {
+      "name": "device revocation follows the same rule",
+      "why": "Same class of problem: with a createdAt-based cut, a stolen device would backdate events to before its own revocation.",
+      "arrival": [
+        {
+          "id": "auth",
+          "author": "alice_root",
+          "type": "identity.device_authorized",
+          "at": "2026-01-01T10:00:00Z",
+          "payload": {
+            "device": "laptop"
+          }
+        },
+        {
+          "id": "e1",
+          "author": "alice_root",
+          "type": "review.created",
+          "signedBy": "laptop",
+          "at": "2026-02-01T10:00:00Z",
+          "payload": {
+            "entity": "cnpj:1",
+            "rating": 3,
+            "body": "fine"
+          }
+        },
+        {
+          "id": "drev",
+          "author": "alice_root",
+          "type": "identity.device_revoked",
+          "at": "2026-06-01T10:00:00Z",
+          "payload": {
+            "device": "laptop"
+          }
+        },
+        {
+          "id": "e2",
+          "author": "alice_root",
+          "type": "review.created",
+          "signedBy": "laptop",
+          "at": "2026-03-01T10:00:00Z",
+          "payload": {
+            "entity": "cnpj:1",
+            "rating": 5,
+            "body": "after the theft"
+          }
+        }
+      ],
+      "expect": {
+        "accepted": [
+          "auth",
+          "e1",
+          "drev"
+        ],
+        "rejected": [
+          {
+            "id": "e2",
+            "reason": "device key revoked before this node observed the event"
+          }
+        ]
+      }
+    }
+  ]
+}

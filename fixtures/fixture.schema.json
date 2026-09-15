@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ecoa.network/fixtures/fixture.schema.json",
+  "title": "Ecoa Network — behavioural fixture file",
+  "$comment": "Fixtures exercise RULES, not the wire format. Identifiers are symbolic and short so a failing case is readable; signatures and real digests are out of scope here and covered by the canonicalization and ZIP-215 vectors instead.",
+  "type": "object",
+  "properties": {
+    "topic": { "type": "string" },
+    "rule": { "type": "string", "$comment": "Where the behaviour is specified. The spec wins over the fixture." },
+    "$comment": { "type": "string" },
+    "cases": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "why": { "type": "string", "$comment": "What breaks if an implementation gets this one wrong." },
+          "identities": {
+            "type": "object",
+            "$comment": "Local observations supplied as input, never computed by the fixture: weight and age are per-indexer.",
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "weight": { "type": "number" },
+                "claims": { "type": "array", "items": { "type": "object" } }
+              },
+              "additionalProperties": false
+            }
+          },
+          "arrival": {
+            "type": "array",
+            "$comment": "In the order the node observed them. Order matters for rotation, revocation and orphan buffering; it is irrelevant for chain-head resolution, and a case that depends on it says so.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "string" },
+                "author": { "type": "string" },
+                "signedBy": { "type": "string", "$comment": "Device key, when it differs from the author." },
+                "type": { "type": "string" },
+                "at": { "type": "string", "$comment": "The author's own createdAt." },
+                "payload": { "type": "object" }
+              },
+              "required": ["id", "author", "type"],
+              "additionalProperties": false
+            }
+          },
+          "expect": { "type": "object" }
+        },
+        "required": ["name", "why", "arrival", "expect"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["topic", "rule", "cases"],
+  "additionalProperties": false
+}

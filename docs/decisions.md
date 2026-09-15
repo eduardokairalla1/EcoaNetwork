@@ -416,7 +416,7 @@ Worse, the rule contradicted the document's own general principle, which already
 
 Both would partition the network rather than compromise a key, which is the failure mode that only shows up in production and is hardest to diagnose.
 
-**Ed25519 verification isn't uniform across libraries.** Cofactored versus cofactorless verification, small-order keys, non-canonical `S` — each accepted by some implementations and rejected by others. Now pinned to the strict rules (reject non-canonical `S`, reject small-order points, verify cofactorlessly), with `did:key` decoding held to the same standard, and a signature test-vector set promoted to a Phase 0 deliverable.
+**Ed25519 verification isn't uniform across libraries.** Cofactored versus cofactorless verification, small-order points, non-canonical encodings — each handled differently by different implementations. Pinned to a single rule set, with a signature test-vector set promoted to a Phase 0 deliverable. (The rule set chosen here was *wrong* on the first attempt and is corrected in §13.1 — it asked for cofactorless verification, which is the one choice that guarantees disagreement.)
 
 **JSON parsing happens before canonicalization.** Duplicate object keys are resolved differently by different parsers — first wins, last wins, or error — so two implementations compute different digests for identical bytes. Duplicate keys are now rejected outright. Nesting depth is capped at 32 in the same breath, since the 16 KB ceiling bounds size but not structure, and thousands of levels fit inside it — enough to overflow a recursive canonicalizer's stack *before* any signature is checked, which is the cheapest possible denial of service.
 
@@ -491,6 +491,68 @@ Seventeen values, no hierarchy. A free string means everyone invents their own a
 - **No avatar and no links on a profile.** Attachments are out of v1 scope, and an unverified link field on a public profile is a phishing surface that costs nothing to omit.
 - **`lang` is optional and exists for search quality.** Portuguese and English stem differently and automatic detection is wrong often enough to matter on short text. An indexer that ignores it loses only relevance.
 - **`device.label` is optional and warned about.** Device names leak more than people expect, and the event is permanent.
+
+## 13. Stack for the node
+
+The first stack decision, taken when the node phase was picked up rather than in advance. It brought one correction with it.
+
+### 13.1 Verification is ZIP-215, not "as strict as possible" — **bug**
+
+§11.3 pinned Ed25519 verification to three rules: reject non-canonical `S`, reject small-order points, and verify **cofactorlessly**. Researching Go libraries to implement it surfaced that two of the three were wrong, and wrong in the direction that causes the exact failure the rule existed to prevent.
+
+**ZIP-215 is cofactored.** Cofactorless verification is the choice whose result depends on whether a small-order component happens to be present — the textbook way two honest implementations end up disagreeing about the same bytes. Asking for it while citing ZIP-215 as the justification was a straightforward error.
+
+The rules, corrected:
+
+| | Old (wrong) | ZIP-215 |
+|---|---|---|
+| Equation | cofactorless | **cofactored**, `[8]R = [8]([s]B − [k]A)` |
+| Scalar `S` | reject non-canonical | reject non-canonical — unchanged |
+| Point encodings | reject non-canonical | **accepted**, if they decode at all |
+| Small-order points | reject | **not rejected** |
+
+**The underlying mistake was conflating two goals.** Rejecting everything questionable buys *signature binding*: no second valid signature over the same message. Making every implementation agree buys *consensus*. They are different properties with different rule sets, and the section asked for the first while arguing for the second.
+
+This project needs only consensus — and it already has binding from elsewhere, because `signature` is outside the `eventId` digest (§1.1), so a mauled signature produces the same `eventId` and is discarded as a duplicate. A decision taken for one reason turned out to cover a second.
+
+`did:key` decoding stays strict, and that is not in tension: canonical multibase is about identities comparing as exact strings, not about which signatures verify.
+
+### 13.2 The node is written in Go — **call**
+
+`go-libp2p` is the reference implementation of libp2p, and Gossipsub plus request/response streams is well-trodden ground there. Since libp2p was the largest schedule risk on the board ([docs/roadmap.md](./roadmap.md)), picking the language with the most mature binding is the cheapest available reduction of it.
+
+Two library choices follow, and both are consequential enough to record:
+
+**`github.com/hdevalence/ed25519consensus` for signature verification, not the standard library.** Go's `crypto/ed25519` uses the unbatched (cofactorless) equation, does not check canonicality of `A`, and enforces canonicality of `R` only as a side effect of comparing bytes — so it does not implement §13.1 and cannot be made to. There is precedent for the risk being real rather than theoretical: Go's IBM z/Architecture backend has diverged from its own software implementation, meaning two machines running the same standard library disagreed about a signature. `ed25519consensus` is a fork of the standard library that implements ZIP-215, and is the de-facto choice for consensus-critical Go.
+
+**`github.com/gowebpki/jcs` for canonicalization**, a fork of the RFC 8785 author's reference implementation. It carries its own parser rather than using `encoding/json`, which fits: it operates on raw bytes, so unknown payload fields survive canonicalization without a struct round-trip losing them. It also **rejects duplicate object keys natively**, which is half of §11.3's parsing requirement for free.
+
+It does **not** limit nesting depth, and it recurses — so the stack-overflow half of that requirement stays the project's own work, exactly as the specification anticipated.
+
+**One implementation trap worth recording before it bites.** Verifying a received event means removing `eventId` and `signature` before canonicalizing. Doing that by round-tripping through `map[string]interface{}` turns every JSON number into a `float64` and silently loses precision on large integers — in a protocol that forbids floats and relies on integers. Use `json.Decoder` with `UseNumber()`, or edit at the raw-JSON level.
+
+The gateway, indexer and client remain unchosen; they speak HTTP and SQL, not libp2p, and nothing about them is blocked by this.
+
+## 14. Related work
+
+### 14.1 The contribution claim was too wide, and the research narrowed it — **honesty fix**
+
+Researching the neighbouring protocols was scheduled early precisely so it could change the design rather than decorate it, and it did — by removing something from the contribution column.
+
+**Moderation as a separate, subscribable stream of labels is not new here.** AT Protocol has [stackable moderation](https://bsky.social/about/blog/03-12-2024-stackable-moderation): independent labelers publish labels, users subscribe to the ones they trust, and the underlying content is never deleted. That is the same design as this project's, arrived at independently. Prior framing in these documents implied it was a contribution; it is not, and the claim is withdrawn.
+
+Converging on it independently is still worth something — as evidence the design is right, not as evidence of originality.
+
+**What the research confirmed instead.** Nostr's relays [deliberately do not replicate to each other](https://nostr.how/en/the-protocol) — no gossip layer, no relay mesh, by design. That makes durability a client-side habit rather than a network property, and it is a real difference from this project, where inter-node replication is most of the cost of the network layer.
+
+**What survived as contribution**, stated narrowly:
+
+- **Authority over data nobody owns.** Every neighbouring protocol assumes each record has an owner. An entity's name has none, which is a problem a social network never has.
+- **Weighted claims as the Sybil defence**, per claim type, with the honest note that age cannot carry it.
+- **Vote-to-version binding**, which only matters when editable content carries a score.
+- **A published determinism boundary.** AT Protocol has the same architecture; we could not find the equivalent written contract.
+
+**The lesson worth keeping:** the wide claim would have survived until someone in a defence asked about Ozone. Doing this before writing code, rather than after, is what the roadmap ordering was for.
 
 ## Still open, and owned by the project
 

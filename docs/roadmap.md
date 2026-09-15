@@ -48,7 +48,7 @@ Nothing here is code, and none of it can be deferred past the first line of it.
 | Decision | Why it can't wait |
 |---|---|
 | ~~Payload schema per event type~~ | **Settled** ([protocol.md](./protocol.md#payloads)) — no longer a blocker. The remaining decisions below are all about implementation, not design. |
-| **Language for the node** | `go-libp2p` is the most mature implementation, `rust-libp2p` is solid, `js-libp2p` is the weakest of the three exactly where this project leans hardest — long-lived connections and sync. This choice interacts directly with the largest risk on the board. |
+| ~~Language for the node~~ | **Settled: Go**, with `ed25519consensus` for verification and `gowebpki/jcs` for canonicalization ([decisions.md](./decisions.md#132-the-node-is-written-in-go--call)). `go-libp2p` being the reference implementation is the cheapest available reduction of the largest risk on the board. |
 | **Language for gateway, indexer, client** | Independent of the node — they speak HTTP and SQL, not libp2p. Can be whatever you're fastest in. |
 | **Development network name** | `ecoa-dev`, or whatever you pick. It goes inside the signed bytes ([protocol.md](./protocol.md#network-separation)), so choosing it after events exist means re-signing all of them. |
 | **Which metrics to collect** | See [the academic track](#academic-track-runs-in-parallel). Deciding now means counters get written alongside the code that needs them. |
@@ -63,7 +63,7 @@ The interop contract. Everything downstream is tested against these, and for an 
 
 1. **JSON Schema per event type** — a mechanical transcription of [the payload spec](./protocol.md#payloads), including the enums and the per-field length limits.
 2. **Canonicalization and signing test vectors** — input object, expected JCS bytes, expected `signing_input`, expected `eventId`, expected signature. This is what makes two independent implementations provably compatible.
-3. **Strict-signature vectors** — the malleability cases specifically: non-canonical `S`, small-order keys, small-order `R`. Each must be *rejected*, and a permissive library will pass them, which is the whole point of having the vectors ([protocol.md](./protocol.md#signature-verification-must-be-strict)).
+3. **ZIP-215 signature vectors** — the edge cases where implementations disagree, each with its expected verdict ([protocol.md](./protocol.md#signature-verification-follows-zip-215)). Note that these are *not* all rejections: non-canonical `S` must be rejected, but a non-canonical point encoding and a small-order point must be **accepted**, and a stricter library will fail those. Getting a vector's expected verdict backwards here produces exactly the partition the vectors exist to prevent.
 4. **Behavioral fixtures** for the rules that are easy to implement subtly differently: chain head resolution with a fork, conflicting rotations, orphan buffering and release, vote-to-version binding across an edit, per-field entity resolution.
 
 **Done when:** a fixture file exists for each, with expected outputs, runnable before any implementation exists.
@@ -204,8 +204,25 @@ Not a phase. These are worth starting early and are actively harmed by being lef
 
 **Related work — do this first, before step 2.** The nearest neighbours are [Nostr](https://github.com/nostr-protocol/nips) (signed events, content-addressed ids, dumb relays, pluggable clients), [AT Protocol](https://atproto.com/) (signed repositories as truth, relay firehose, AppView as projection — architecturally very close to the log/index split here), [Secure Scuttlebutt](https://scuttlebutt.nz/) (append-only signed feeds, gossip replication), and ActivityPub (federated but server-authoritative, and the furthest away).
 
-Writing this early is not administrative work: it forces the question of what this design actually contributes. The honest answer is that the transport layer is known art and the position between Nostr's simplicity and AT Protocol's weight is a deliberate choice — while the trust layer, weighted claims, entity edit authority, and vote-to-version binding, is where the contribution is. Nostr and AT Protocol both leave reputation to whoever builds on them.
+Writing this early is not administrative work: it forces the question of what this design actually contributes, and it already changed the answer. See [related-work.md](./related-work.md).
 
-**Evaluation metrics — decide in step 0, collect throughout.** Propagation latency across the three nodes, index rebuild time against event count, storage per event, validation throughput in signatures per second, orphan buffer occupancy under out-of-order delivery. All of them fall out of what's being built anyway, and the seeded dataset from step 9 gives them a realistic volume to run against.
+The research corrected an overclaim before it reached a defence. Moderation-as-pluggable-labels was being described here as a contribution; **AT Protocol shipped it first and at scale**, as subscribable labelers. Converging on the same design independently is a signal that the design is right, not evidence of originality.
+
+What survived as genuinely different is narrower: authority over data nobody owns, weighted claims as the Sybil defence, vote-to-version binding, and a written determinism boundary. What did *not* survive is worth knowing before someone in a defence points it out.
+
+**Evaluation metrics — decided in step 0, collected throughout.** Deciding them before building is what lets each counter go in beside the code that produces it; retrofitting measurement onto finished code is how a results chapter turns into guesswork.
+
+| Metric | Unit | Where the counter lives | Why this one |
+|---|---|---|---|
+| Propagation latency | ms, as a distribution | Node: accept timestamp, compared across the three | Quantifies the claim that the network actually replicates. Reported separately for Gossipsub and for sync recovery, because they answer different questions |
+| Index rebuild time | seconds, against event count | Indexer: around the rebuild operation | The project's central claim is that the index is a projection. This says what that costs, and at what volume it stops being cheap |
+| Validation throughput | events/second | Node: around the full checklist | The ceiling on what a node can absorb. Measured over the **whole** checklist, not signature verification alone — canonicalization is part of the cost |
+| Storage per event | bytes, node and index separately | Node store and index, sampled | No v1 node prunes, so the log only grows. This is what turns "pruning is unnecessary for now" into a dated claim |
+| Orphan buffer occupancy | peak entries under controlled disorder | Node: buffer gauge | Says whether the default bound evicts legitimate orphans, which is the difference between a delay and a loss |
+| Rejections by reason | count per reason | Node: at each rejection point | Not a headline number, but the one that makes every other measurement debuggable |
+
+Two rules for the numbers to be worth anything. **Distributions, not just means** — a mean propagation latency hides exactly the tail that matters. And **each measurement's method written down as it is taken**, because a number nobody can reproduce is not a result.
+
+The honest limitation to state alongside them: the three nodes run in one environment, so propagation latency measures the protocol and the implementation, not the internet.
 
 **Legal policy** — LGPD, Marco Civil, and the illegal-content process ([mvp.md](./mvp.md#legal-exposure)). Independent of every implementation step, and the section most likely to be asked about in a defence.

@@ -1,0 +1,555 @@
+{
+  "topic": "Per-field resolution of entity metadata",
+  "rule": "docs/entities.md#2-unverified-edit--a-proposal-not-a-fact",
+  "$comment": "Weights are supplied as INPUT to each case, never computed by the fixture: weight is a local observation, so the rule is deterministic and the outcome is per-indexer. Two honest indexers can reach different canonical values from the same log, and that is the design working.",
+  "cases": [
+    {
+      "name": "a verified representative is canonical without any votes",
+      "why": "Tier 1 applies the edit directly. If it depended on votes, no company could ever correct its own name, because nobody votes on that.",
+      "identities": {
+        "company": {
+          "weight": 1.0,
+          "claims": [
+            {
+              "type": "domain",
+              "entity": "domain:example.com",
+              "recognized": true
+            }
+          ]
+        }
+      },
+      "arrival": [
+        {
+          "id": "u1",
+          "author": "company",
+          "type": "entity.updated",
+          "at": "2026-01-01T10:00:00Z",
+          "payload": {
+            "entity": "domain:example.com",
+            "name": "Example Ltd",
+            "category": "technology"
+          }
+        }
+      ],
+      "expect": {
+        "canonical": {
+          "name": "Example Ltd",
+          "category": "technology"
+        },
+        "tier": 1
+      }
+    },
+    {
+      "name": "a self-signed delegated claim confers no tier 1",
+      "why": "Anyone can publish a claim asserting anything. If self-signed were enough, tier 1 would be forgeable by any key willing to assert something about itself.",
+      "identities": {
+        "mallory": {
+          "weight": 0.1,
+          "claims": [
+            {
+              "type": "cnpj",
+              "entity": "cnpj:12345678000199",
+              "recognized": false,
+              "selfSigned": true
+            }
+          ]
+        },
+        "seed": {
+          "weight": 0.8
+        }
+      },
+      "arrival": [
+        {
+          "id": "u0",
+          "author": "seed",
+          "type": "entity.updated",
+          "at": "2026-01-01T10:00:00Z",
+          "payload": {
+            "entity": "cnpj:12345678000199",
+            "name": "Correct Company Ltd"
+          }
+        },
+        {
+          "id": "u1",
+          "author": "mallory",
+          "type": "entity.updated",
+          "at": "2026-01-02T10:00:00Z",
+          "payload": {
+            "entity": "cnpj:12345678000199",
+            "name": "Mallory's Company"
+          }
+        }
+      ],
+      "expect": {
+        "canonical": {
+          "name": "Correct Company Ltd"
+        },
+        "tier": 2,
+        "note": "mallory's proposal is stored and competes as tier 2, losing on weight"
+      }
+    },
+    {
+      "name": "a domain claim does not reach a cnpj entity",
+      "why": "Nothing in a DNS record says which CNPJ is behind it. If it reached, anyone holding any verified domain could seize any company.",
+      "identities": {
+        "company": {
+          "weight": 1.0,
+          "claims": [
+            {
+              "type": "domain",
+              "entity": "domain:example.com",
+              "recognized": true
+            }
+          ]
+        },
+        "seed": {
+          "weight": 0.8
+        }
+      },
+      "arrival": [
+        {
+          "id": "u0",
+          "author": "seed",
+          "type": "entity.updated",
+          "at": "2026-01-01T10:00:00Z",
+          "payload": {
+            "entity": "cnpj:12345678000199",
+            "name": "Correct Company Ltd"
+          }
+        },
+        {
+          "id": "u1",
+          "author": "company",
+          "type": "entity.updated",
+          "at": "2026-01-02T10:00:00Z",
+          "payload": {
+            "entity": "cnpj:12345678000199",
+            "name": "Name The Company Wants"
+          }
+        }
+      ],
+      "expect": {
+        "canonical": {
+          "name": "Name The Company Wants"
+        },
+        "tier": 2,
+        "note": "the proposal wins on weight 1.0 against 0.8, not on authority — and would lose to a heavier incumbent"
+      }
+    },
+    {
+      "name": "with no votes, resolution falls back to the author's weight",
+      "why": "Nobody votes on a company's category. Ranking by votes alone is ranking zero against zero, and then the implementation's accidental tiebreak becomes the real rule — almost always last-writer-wins.",
+      "identities": {
+        "veteran": {
+          "weight": 0.9
+        },
+        "newcomer": {
+          "weight": 0.1
+        }
+      },
+      "arrival": [
+        {
+          "id": "u1",
+          "author": "veteran",
+          "type": "entity.updated",
+          "at": "2026-01-01T10:00:00Z",
+          "payload": {
+            "entity": "cnpj:12345678000199",
+            "name": "Established Name"
+          }
+        },
+        {
+          "id": "u2",
+          "author": "newcomer",
+          "type": "entity.updated",
+          "at": "2026-01-05T10:00:00Z",
+          "payload": {
+            "entity": "cnpj:12345678000199",
+            "name": "Vandalized Name"
+          }
+        }
+      ],
+      "expect": {
+        "canonical": {
+          "name": "Established Name"
+        },
+        "tier": 2,
+        "note": "a fresh anonymous key does not overwrite an established identity's value, despite being more recent"
+      }
+    },
+    {
+      "name": "a proposal fixing only the category leaves the name alone",
+      "why": "Resolving per field is what lets someone correct one thing without having to re-assert everything that was already right.",
+      "identities": {
+        "veteran": {
+          "weight": 0.9
+        },
+        "corrector": {
+          "weight": 0.5
+        }
+      },
+      "arrival": [
+        {
+          "id": "u1",
+          "author": "veteran",
+          "type": "entity.updated",
+          "at": "2026-01-01T10:00:00Z",
+          "payload": {
+            "entity": "cnpj:12345678000199",
+            "name": "Joe's Bakery",
+            "category": "technology"
+          }
+        },
+        {
+          "id": "u2",
+          "author": "corrector",
+          "type": "entity.updated",
+          "at": "2026-01-05T10:00:00Z",
+          "payload": {
+            "entity": "cnpj:12345678000199",
+            "category": "food-and-drink"
+          }
+        }
+      ],
+      "expect": {
+        "canonical": {
+          "name": "Joe's Bakery",
+          "category": "technology"
+        },
+        "note": "the category correction loses on weight; the name is never contested because u2 does not assert it"
+      }
+    },
+    {
+      "name": "a heavier category correction takes only that field",
+      "why": "The other side: a good fix to one field must not drag a bad value in another along with it.",
+      "identities": {
+        "weak": {
+          "weight": 0.3
+        },
+        "strong": {
+          "weight": 0.9
+        }
+      },
+      "arrival": [
+        {
+          "id": "u1",
+          "author": "weak",
+          "type": "entity.updated",
+          "at": "2026-01-01T10:00:00Z",
+          "payload": {
+            "entity": "cnpj:12345678000199",
+            "name": "Joe's Bakery",
+            "category": "technology"
+          }
+        },
+        {
+          "id": "u2",
+          "author": "strong",
+          "type": "entity.updated",
+          "at": "2026-01-05T10:00:00Z",
+          "payload": {
+            "entity": "cnpj:12345678000199",
+            "category": "food-and-drink"
+          }
+        }
+      ],
+      "expect": {
+        "canonical": {
+          "name": "Joe's Bakery",
+          "category": "food-and-drink"
+        },
+        "note": "name from u1, category from u2 — resolution is per field, not per event"
+      }
+    },
+    {
+      "name": "a challenger that barely exceeds the incumbent does not take the field",
+      "why": "Without hysteresis, two near-equal proposals make an entity's name flip every time weights drift, which reads as vandalism even when nobody intended any.",
+      "identities": {
+        "incumbent": {
+          "weight": 0.5
+        },
+        "challenger": {
+          "weight": 0.55
+        }
+      },
+      "arrival": [
+        {
+          "id": "u1",
+          "author": "incumbent",
+          "type": "entity.updated",
+          "at": "2026-01-01T10:00:00Z",
+          "payload": {
+            "entity": "cnpj:12345678000199",
+            "name": "Name A"
+          }
+        },
+        {
+          "id": "u2",
+          "author": "challenger",
+          "type": "entity.updated",
+          "at": "2026-01-05T10:00:00Z",
+          "payload": {
+            "entity": "cnpj:12345678000199",
+            "name": "Name B"
+          }
+        }
+      ],
+      "expect": {
+        "canonical": {
+          "name": "Name A"
+        },
+        "margin": "0.55 does not exceed 0.50 by 20%",
+        "note": "the challenger would need more than 0.60"
+      }
+    },
+    {
+      "name": "a challenger above the margin takes the field",
+      "why": "Hysteresis must not freeze the entity: a legitimate correction with clear headroom has to pass.",
+      "identities": {
+        "incumbent": {
+          "weight": 0.5
+        },
+        "challenger": {
+          "weight": 0.8
+        }
+      },
+      "arrival": [
+        {
+          "id": "u1",
+          "author": "incumbent",
+          "type": "entity.updated",
+          "at": "2026-01-01T10:00:00Z",
+          "payload": {
+            "entity": "cnpj:12345678000199",
+            "name": "Wrong Name"
+          }
+        },
+        {
+          "id": "u2",
+          "author": "challenger",
+          "type": "entity.updated",
+          "at": "2026-01-05T10:00:00Z",
+          "payload": {
+            "entity": "cnpj:12345678000199",
+            "name": "Right Name"
+          }
+        }
+      ],
+      "expect": {
+        "canonical": {
+          "name": "Right Name"
+        }
+      }
+    },
+    {
+      "name": "equal weights break on the earlier proposal",
+      "why": "Determinism even in a tie, otherwise arrival order decides.",
+      "identities": {
+        "a": {
+          "weight": 0.5
+        },
+        "b": {
+          "weight": 0.5
+        }
+      },
+      "arrival": [
+        {
+          "id": "uz",
+          "author": "b",
+          "type": "entity.updated",
+          "at": "2026-01-05T10:00:00Z",
+          "payload": {
+            "entity": "cnpj:12345678000199",
+            "name": "Name B"
+          }
+        },
+        {
+          "id": "ua",
+          "author": "a",
+          "type": "entity.updated",
+          "at": "2026-01-01T10:00:00Z",
+          "payload": {
+            "entity": "cnpj:12345678000199",
+            "name": "Name A"
+          }
+        }
+      ],
+      "expect": {
+        "canonical": {
+          "name": "Name A"
+        },
+        "tiebreak": "earlier proposal, then lower id"
+      }
+    },
+    {
+      "name": "conflicting recognized claims resolve by precedence",
+      "why": "Falling back to tier 2 on every conflict would make demotion a cheap attack: obtaining any competing claim would strip a legitimate representative of control.",
+      "identities": {
+        "legitimate": {
+          "weight": 1.0,
+          "claims": [
+            {
+              "type": "domain",
+              "entity": "domain:example.com",
+              "recognized": true,
+              "selfVerifiable": true
+            }
+          ]
+        },
+        "competitor": {
+          "weight": 1.0,
+          "claims": [
+            {
+              "type": "cnpj",
+              "entity": "domain:example.com",
+              "recognized": true,
+              "issuer": "verifier1"
+            }
+          ]
+        }
+      },
+      "arrival": [
+        {
+          "id": "u1",
+          "author": "legitimate",
+          "type": "entity.updated",
+          "at": "2026-01-01T10:00:00Z",
+          "payload": {
+            "entity": "domain:example.com",
+            "name": "Legitimate Name"
+          }
+        },
+        {
+          "id": "u2",
+          "author": "competitor",
+          "type": "entity.updated",
+          "at": "2026-01-05T10:00:00Z",
+          "payload": {
+            "entity": "domain:example.com",
+            "name": "Hijacked Name"
+          }
+        }
+      ],
+      "expect": {
+        "canonical": {
+          "name": "Legitimate Name"
+        },
+        "tier": 1,
+        "fellBackToTier2": false,
+        "precedence": "self-verifiable beats delegated"
+      }
+    },
+    {
+      "name": "a seeded value competes under the same rules",
+      "why": "Seeding entities from public data makes conflict rare, but it must not be a back door: it enters as an ordinary tier-2 proposal signed by the operator's identity.",
+      "identities": {
+        "indexer": {
+          "weight": 0.8
+        },
+        "company": {
+          "weight": 1.0,
+          "claims": [
+            {
+              "type": "domain",
+              "entity": "domain:example.com",
+              "recognized": true
+            }
+          ]
+        }
+      },
+      "arrival": [
+        {
+          "id": "seed",
+          "author": "indexer",
+          "type": "entity.updated",
+          "at": "2026-01-01T10:00:00Z",
+          "payload": {
+            "entity": "domain:example.com",
+            "name": "EXAMPLE TRADING LTD"
+          }
+        },
+        {
+          "id": "u1",
+          "author": "company",
+          "type": "entity.updated",
+          "at": "2026-01-05T10:00:00Z",
+          "payload": {
+            "entity": "domain:example.com",
+            "name": "Example"
+          }
+        }
+      ],
+      "expect": {
+        "canonical": {
+          "name": "Example"
+        },
+        "tier": 1,
+        "note": "the verified representative's proposal overrides the seeded value"
+      }
+    },
+    {
+      "name": "a labelled tier-1 edit stops being projected",
+      "why": "Tier 1 is authoritative, not unquestionable. A compromised company key vandalizing the entity page is a realistic outcome.",
+      "identities": {
+        "company": {
+          "weight": 1.0,
+          "claims": [
+            {
+              "type": "domain",
+              "entity": "domain:example.com",
+              "recognized": true
+            }
+          ]
+        },
+        "seed": {
+          "weight": 0.8
+        }
+      },
+      "arrival": [
+        {
+          "id": "seed",
+          "author": "seed",
+          "type": "entity.updated",
+          "at": "2026-01-01T10:00:00Z",
+          "payload": {
+            "entity": "domain:example.com",
+            "name": "Example Ltd"
+          }
+        },
+        {
+          "id": "u1",
+          "author": "company",
+          "type": "entity.updated",
+          "at": "2026-01-05T10:00:00Z",
+          "payload": {
+            "entity": "domain:example.com",
+            "name": "XXX BUY HERE XXX"
+          }
+        },
+        {
+          "id": "l1",
+          "author": "mod",
+          "type": "moderation.label_created",
+          "at": "2026-01-06T10:00:00Z",
+          "payload": {
+            "target": "u1",
+            "label": "spam"
+          }
+        }
+      ],
+      "expect": {
+        "canonical": {
+          "name": "Example Ltd"
+        },
+        "labelledProposals": [
+          "u1"
+        ],
+        "retained": [
+          "seed",
+          "u1"
+        ],
+        "note": "nothing is deleted: canonical is a pointer into history, and the indexer falls back by policy"
+      }
+    }
+  ]
+}

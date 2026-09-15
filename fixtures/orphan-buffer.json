@@ -1,0 +1,288 @@
+{
+  "topic": "Unresolved references and the orphan buffer",
+  "rule": "docs/protocol.md#unresolved-references",
+  "$comment": "Gossip does not deliver in causal order. Rejecting on a missing reference means not rebroadcasting, which drops the event out of the network rather than merely delaying it — the network would lose valid events at a rate proportional to how fast it is.",
+  "cases": [
+    {
+      "name": "a vote arrives before its target review",
+      "why": "Routine, not an attack. The event is valid in every respect through the signature; only its target has not arrived yet.",
+      "arrival": [
+        {
+          "id": "v1",
+          "author": "bob",
+          "type": "review.endorsed",
+          "at": "2026-01-02T10:00:00Z",
+          "payload": {
+            "target": "e1"
+          }
+        }
+      ],
+      "expect": {
+        "buffered": [
+          "v1"
+        ],
+        "stored": [],
+        "indexed": [],
+        "relayed": [],
+        "note": "not stored as valid, not indexed, and above all not rebroadcast"
+      }
+    },
+    {
+      "name": "the target arrives and releases the orphan",
+      "why": "The orphan must be revalidated from step 9, not waved through because it already passed the cryptography earlier.",
+      "arrival": [
+        {
+          "id": "v1",
+          "author": "bob",
+          "type": "review.endorsed",
+          "at": "2026-01-02T10:00:00Z",
+          "payload": {
+            "target": "e1"
+          }
+        },
+        {
+          "id": "e1",
+          "author": "alice",
+          "type": "review.created",
+          "at": "2026-01-01T10:00:00Z",
+          "payload": {
+            "entity": "cnpj:1",
+            "rating": 2,
+            "body": "v1"
+          }
+        }
+      ],
+      "expect": {
+        "buffered": [],
+        "stored": [
+          "e1",
+          "v1"
+        ],
+        "relayed": [
+          "e1",
+          "v1"
+        ],
+        "revalidatedFromStep": 9,
+        "note": "storage order follows resolution, not arrival"
+      }
+    },
+    {
+      "name": "an unknown event type is not an orphan",
+      "why": "Reference checks are type-specific. An unknown type has nothing to fail, and holding it would let one un-upgraded node stall a new type across the whole network.",
+      "arrival": [
+        {
+          "id": "x1",
+          "author": "alice",
+          "type": "review.bookmarked",
+          "at": "2026-01-01T10:00:00Z",
+          "payload": {
+            "target": "e1"
+          }
+        }
+      ],
+      "expect": {
+        "buffered": [],
+        "stored": [
+          "x1"
+        ],
+        "relayed": [
+          "x1"
+        ],
+        "indexed": [],
+        "note": "structurally sound and authentically signed, semantically opaque"
+      }
+    },
+    {
+      "name": "a target that never arrives is evicted silently",
+      "why": "Eviction is safe because a genuine orphan returns through ordinary sync: whoever holds the target holds the child too.",
+      "arrival": [
+        {
+          "id": "v1",
+          "author": "bob",
+          "type": "review.endorsed",
+          "at": "2026-01-02T10:00:00Z",
+          "payload": {
+            "target": "never_existed"
+          }
+        }
+      ],
+      "expect": {
+        "buffered": [
+          "v1"
+        ],
+        "afterBound": {
+          "buffered": [],
+          "evicted": [
+            "v1"
+          ],
+          "error": false
+        },
+        "note": "a delay, not a loss — and that is why the buffer can stay small"
+      }
+    },
+    {
+      "name": "a device-signed event whose authorization has not arrived",
+      "why": "Verifying a deviceKey signature depends on an event the node may not hold. That is an unresolved reference like any other, not an invalid signature.",
+      "arrival": [
+        {
+          "id": "e1",
+          "author": "alice_root",
+          "type": "review.created",
+          "signedBy": "laptop",
+          "at": "2026-02-01T10:00:00Z",
+          "payload": {
+            "entity": "cnpj:1",
+            "rating": 3,
+            "body": "fine"
+          }
+        }
+      ],
+      "expect": {
+        "buffered": [
+          "e1"
+        ],
+        "stored": [],
+        "relayed": []
+      }
+    },
+    {
+      "name": "the authorization arrives and releases the device event",
+      "why": "The other side of the previous case. Only testing that it holds would allow an implementation that never releases.",
+      "arrival": [
+        {
+          "id": "e1",
+          "author": "alice_root",
+          "type": "review.created",
+          "signedBy": "laptop",
+          "at": "2026-02-01T10:00:00Z",
+          "payload": {
+            "entity": "cnpj:1",
+            "rating": 3,
+            "body": "fine"
+          }
+        },
+        {
+          "id": "auth",
+          "author": "alice_root",
+          "type": "identity.device_authorized",
+          "at": "2026-01-01T10:00:00Z",
+          "payload": {
+            "device": "laptop"
+          }
+        }
+      ],
+      "expect": {
+        "buffered": [],
+        "stored": [
+          "auth",
+          "e1"
+        ],
+        "relayed": [
+          "auth",
+          "e1"
+        ]
+      }
+    },
+    {
+      "name": "one peer cannot occupy the whole buffer",
+      "why": "Filling it with references that will never resolve is cheap and would evict everyone else's legitimate orphans. That is why the bound is per peer, not only global.",
+      "arrival": [
+        {
+          "id": "f1",
+          "author": "mallory",
+          "type": "review.endorsed",
+          "at": "2026-01-01T10:00:00Z",
+          "payload": {
+            "target": "nonexistent_1"
+          }
+        },
+        {
+          "id": "f2",
+          "author": "mallory",
+          "type": "review.endorsed",
+          "at": "2026-01-01T10:00:00Z",
+          "payload": {
+            "target": "nonexistent_2"
+          }
+        },
+        {
+          "id": "f3",
+          "author": "mallory",
+          "type": "review.endorsed",
+          "at": "2026-01-01T10:00:00Z",
+          "payload": {
+            "target": "nonexistent_3"
+          }
+        },
+        {
+          "id": "f4",
+          "author": "mallory",
+          "type": "review.endorsed",
+          "at": "2026-01-01T10:00:00Z",
+          "payload": {
+            "target": "nonexistent_4"
+          }
+        },
+        {
+          "id": "f5",
+          "author": "mallory",
+          "type": "review.endorsed",
+          "at": "2026-01-01T10:00:00Z",
+          "payload": {
+            "target": "nonexistent_5"
+          }
+        },
+        {
+          "id": "f6",
+          "author": "mallory",
+          "type": "review.endorsed",
+          "at": "2026-01-01T10:00:00Z",
+          "payload": {
+            "target": "nonexistent_6"
+          }
+        },
+        {
+          "id": "f7",
+          "author": "mallory",
+          "type": "review.endorsed",
+          "at": "2026-01-01T10:00:00Z",
+          "payload": {
+            "target": "nonexistent_7"
+          }
+        },
+        {
+          "id": "f8",
+          "author": "mallory",
+          "type": "review.endorsed",
+          "at": "2026-01-01T10:00:00Z",
+          "payload": {
+            "target": "nonexistent_8"
+          }
+        },
+        {
+          "id": "f9",
+          "author": "mallory",
+          "type": "review.endorsed",
+          "at": "2026-01-01T10:00:00Z",
+          "payload": {
+            "target": "nonexistent_9"
+          }
+        },
+        {
+          "id": "f10",
+          "author": "mallory",
+          "type": "review.endorsed",
+          "at": "2026-01-01T10:00:00Z",
+          "payload": {
+            "target": "nonexistent_10"
+          }
+        }
+      ],
+      "expect": {
+        "perPeerCapEnforced": true,
+        "legitimateOrphansEvicted": false,
+        "note": "behaviour Gossipsub peer scoring also penalizes"
+      }
+    }
+  ]
+}
