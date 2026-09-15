@@ -517,6 +517,22 @@ This project needs only consensus — and it already has binding from elsewhere,
 
 `did:key` decoding stays strict, and that is not in tension: canonical multibase is about identities comparing as exact strings, not about which signatures verify.
 
+### 13.2 The node is written in Go — **call**
+
+`go-libp2p` is the reference implementation of libp2p, and Gossipsub plus request/response streams is well-trodden ground there. Since libp2p was the largest schedule risk on the board ([docs/roadmap.md](./roadmap.md)), picking the language with the most mature binding is the cheapest available reduction of it.
+
+Two library choices follow, and both are consequential enough to record:
+
+**`github.com/hdevalence/ed25519consensus` for signature verification, not the standard library.** Go's `crypto/ed25519` uses the unbatched (cofactorless) equation, does not check canonicality of `A`, and enforces canonicality of `R` only as a side effect of comparing bytes — so it does not implement §13.1 and cannot be made to. There is precedent for the risk being real rather than theoretical: Go's IBM z/Architecture backend has diverged from its own software implementation, meaning two machines running the same standard library disagreed about a signature. `ed25519consensus` is a fork of the standard library that implements ZIP-215, and is the de-facto choice for consensus-critical Go.
+
+**`github.com/gowebpki/jcs` for canonicalization**, a fork of the RFC 8785 author's reference implementation. It carries its own parser rather than using `encoding/json`, which fits: it operates on raw bytes, so unknown payload fields survive canonicalization without a struct round-trip losing them. It also **rejects duplicate object keys natively**, which is half of §11.3's parsing requirement for free.
+
+It does **not** limit nesting depth, and it recurses — so the stack-overflow half of that requirement stays the project's own work, exactly as the specification anticipated.
+
+**One implementation trap worth recording before it bites.** Verifying a received event means removing `eventId` and `signature` before canonicalizing. Doing that by round-tripping through `map[string]interface{}` turns every JSON number into a `float64` and silently loses precision on large integers — in a protocol that forbids floats and relies on integers. Use `json.Decoder` with `UseNumber()`, or edit at the raw-JSON level.
+
+The gateway, indexer and client remain unchosen; they speak HTTP and SQL, not libp2p, and nothing about them is blocked by this.
+
 ## Still open, and owned by the project
 
 - **Payload schemas per event type.** The largest remaining gap before Phase 0 closes. The rating scale is settled (§1.5) because its meaning has to be uniform across the network; the rest of each payload is ordinary schema work and nothing above depends on how it lands.
