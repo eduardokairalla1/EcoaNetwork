@@ -204,8 +204,25 @@ Not a phase. These are worth starting early and are actively harmed by being lef
 
 **Related work — do this first, before step 2.** The nearest neighbours are [Nostr](https://github.com/nostr-protocol/nips) (signed events, content-addressed ids, dumb relays, pluggable clients), [AT Protocol](https://atproto.com/) (signed repositories as truth, relay firehose, AppView as projection — architecturally very close to the log/index split here), [Secure Scuttlebutt](https://scuttlebutt.nz/) (append-only signed feeds, gossip replication), and ActivityPub (federated but server-authoritative, and the furthest away).
 
-Writing this early is not administrative work: it forces the question of what this design actually contributes. The honest answer is that the transport layer is known art and the position between Nostr's simplicity and AT Protocol's weight is a deliberate choice — while the trust layer, weighted claims, entity edit authority, and vote-to-version binding, is where the contribution is. Nostr and AT Protocol both leave reputation to whoever builds on them.
+Writing this early is not administrative work: it forces the question of what this design actually contributes, and it already changed the answer. See [related-work.md](./related-work.md).
 
-**Evaluation metrics — decide in step 0, collect throughout.** Propagation latency across the three nodes, index rebuild time against event count, storage per event, validation throughput in signatures per second, orphan buffer occupancy under out-of-order delivery. All of them fall out of what's being built anyway, and the seeded dataset from step 9 gives them a realistic volume to run against.
+The research corrected an overclaim before it reached a defence. Moderation-as-pluggable-labels was being described here as a contribution; **AT Protocol shipped it first and at scale**, as subscribable labelers. Converging on the same design independently is a signal that the design is right, not evidence of originality.
+
+What survived as genuinely different is narrower: authority over data nobody owns, weighted claims as the Sybil defence, vote-to-version binding, and a written determinism boundary. What did *not* survive is worth knowing before someone in a defence points it out.
+
+**Evaluation metrics — decided in step 0, collected throughout.** Deciding them before building is what lets each counter go in beside the code that produces it; retrofitting measurement onto finished code is how a results chapter turns into guesswork.
+
+| Metric | Unit | Where the counter lives | Why this one |
+|---|---|---|---|
+| Propagation latency | ms, as a distribution | Node: accept timestamp, compared across the three | Quantifies the claim that the network actually replicates. Reported separately for Gossipsub and for sync recovery, because they answer different questions |
+| Index rebuild time | seconds, against event count | Indexer: around the rebuild operation | The project's central claim is that the index is a projection. This says what that costs, and at what volume it stops being cheap |
+| Validation throughput | events/second | Node: around the full checklist | The ceiling on what a node can absorb. Measured over the **whole** checklist, not signature verification alone — canonicalization is part of the cost |
+| Storage per event | bytes, node and index separately | Node store and index, sampled | No v1 node prunes, so the log only grows. This is what turns "pruning is unnecessary for now" into a dated claim |
+| Orphan buffer occupancy | peak entries under controlled disorder | Node: buffer gauge | Says whether the default bound evicts legitimate orphans, which is the difference between a delay and a loss |
+| Rejections by reason | count per reason | Node: at each rejection point | Not a headline number, but the one that makes every other measurement debuggable |
+
+Two rules for the numbers to be worth anything. **Distributions, not just means** — a mean propagation latency hides exactly the tail that matters. And **each measurement's method written down as it is taken**, because a number nobody can reproduce is not a result.
+
+The honest limitation to state alongside them: the three nodes run in one environment, so propagation latency measures the protocol and the implementation, not the internet.
 
 **Legal policy** — LGPD, Marco Civil, and the illegal-content process ([mvp.md](./mvp.md#legal-exposure)). Independent of every implementation step, and the section most likely to be asked about in a defence.
