@@ -1,0 +1,311 @@
+{
+  "topic": "Authorship over derived events",
+  "rule": "docs/protocol.md#who-may-sign-what",
+  "$comment": "An event that replaces, withdraws or revokes another must carry the same author as its target. One that merely references another — a response, a vote, a report, a label — is a new statement by its own author and carries no restriction. Without this rule, any identity can edit or delete any other's review and every node accepts it.",
+  "cases": [
+    {
+      "name": "editing someone else's review is rejected",
+      "why": "Valid signature, valid schema, existing target — and it would still forge another person's words.",
+      "arrival": [
+        {
+          "id": "e1",
+          "author": "alice",
+          "type": "review.created",
+          "at": "2026-01-01T10:00:00Z",
+          "payload": {
+            "entity": "cnpj:1",
+            "rating": 2,
+            "body": "v1"
+          }
+        },
+        {
+          "id": "e2",
+          "author": "mallory",
+          "type": "review.replaced",
+          "at": "2026-01-02T10:00:00Z",
+          "payload": {
+            "replaces": "e1",
+            "rating": 5,
+            "body": "actually I loved it"
+          }
+        }
+      ],
+      "expect": {
+        "accepted": [
+          "e1"
+        ],
+        "rejected": [
+          {
+            "id": "e2",
+            "reason": "author differs from target author"
+          }
+        ]
+      }
+    },
+    {
+      "name": "withdrawing someone else's review is rejected",
+      "why": "Deleting another person's words is the same forgery as editing them.",
+      "arrival": [
+        {
+          "id": "e1",
+          "author": "alice",
+          "type": "review.created",
+          "at": "2026-01-01T10:00:00Z",
+          "payload": {
+            "entity": "cnpj:1",
+            "rating": 2,
+            "body": "v1"
+          }
+        },
+        {
+          "id": "w1",
+          "author": "mallory",
+          "type": "review.withdrawn",
+          "at": "2026-01-02T10:00:00Z",
+          "payload": {
+            "target": "e1"
+          }
+        }
+      ],
+      "expect": {
+        "accepted": [
+          "e1"
+        ],
+        "rejected": [
+          {
+            "id": "w1",
+            "reason": "author differs from target author"
+          }
+        ]
+      }
+    },
+    {
+      "name": "revoking another moderator's label is rejected",
+      "why": "A moderator retracts their own verdict, nobody else's.",
+      "arrival": [
+        {
+          "id": "e1",
+          "author": "alice",
+          "type": "review.created",
+          "at": "2026-01-01T10:00:00Z",
+          "payload": {
+            "entity": "cnpj:1",
+            "rating": 2,
+            "body": "v1"
+          }
+        },
+        {
+          "id": "l1",
+          "author": "mod1",
+          "type": "moderation.label_created",
+          "at": "2026-01-02T10:00:00Z",
+          "payload": {
+            "target": "e1",
+            "label": "spam"
+          }
+        },
+        {
+          "id": "l2",
+          "author": "mod2",
+          "type": "moderation.label_revoked",
+          "at": "2026-01-03T10:00:00Z",
+          "payload": {
+            "target": "l1"
+          }
+        }
+      ],
+      "expect": {
+        "accepted": [
+          "e1",
+          "l1"
+        ],
+        "rejected": [
+          {
+            "id": "l2",
+            "reason": "author differs from label author"
+          }
+        ]
+      }
+    },
+    {
+      "name": "revoking a claim you did not issue is rejected",
+      "why": "A verifier retracts its own word. The subject cannot force a third party's claim about them to be withdrawn.",
+      "arrival": [
+        {
+          "id": "c1",
+          "author": "verifier",
+          "type": "verification.claim_created",
+          "at": "2026-01-01T10:00:00Z",
+          "payload": {
+            "claimType": "email",
+            "subject": "alice",
+            "expiresAt": "2028-01-01T00:00:00Z"
+          }
+        },
+        {
+          "id": "c2",
+          "author": "alice",
+          "type": "verification.claim_revoked",
+          "at": "2026-01-02T10:00:00Z",
+          "payload": {
+            "target": "c1"
+          }
+        }
+      ],
+      "expect": {
+        "accepted": [
+          "c1"
+        ],
+        "rejected": [
+          {
+            "id": "c2",
+            "reason": "author is not the claim issuer"
+          }
+        ]
+      }
+    },
+    {
+      "name": "third-party responses, votes and reports are accepted",
+      "why": "Referencing is not acting upon. If these were restricted the platform would only have monologues.",
+      "arrival": [
+        {
+          "id": "e1",
+          "author": "alice",
+          "type": "review.created",
+          "at": "2026-01-01T10:00:00Z",
+          "payload": {
+            "entity": "cnpj:1",
+            "rating": 2,
+            "body": "v1"
+          }
+        },
+        {
+          "id": "r1",
+          "author": "company",
+          "type": "review.response_created",
+          "at": "2026-01-02T10:00:00Z",
+          "payload": {
+            "target": "e1",
+            "body": "We will look into it."
+          }
+        },
+        {
+          "id": "v1",
+          "author": "bob",
+          "type": "review.endorsed",
+          "at": "2026-01-03T10:00:00Z",
+          "payload": {
+            "target": "e1"
+          }
+        },
+        {
+          "id": "rp1",
+          "author": "carol",
+          "type": "moderation.report_created",
+          "at": "2026-01-04T10:00:00Z",
+          "payload": {
+            "target": "e1",
+            "reason": "spam"
+          }
+        },
+        {
+          "id": "l1",
+          "author": "mod",
+          "type": "moderation.label_created",
+          "at": "2026-01-05T10:00:00Z",
+          "payload": {
+            "target": "e1",
+            "label": "off-topic"
+          }
+        }
+      ],
+      "expect": {
+        "accepted": [
+          "e1",
+          "r1",
+          "v1",
+          "rp1",
+          "l1"
+        ],
+        "rejected": []
+      }
+    },
+    {
+      "name": "editing with the new key what was published with the old one is accepted",
+      "why": "The comparison is between identities resolved through the rotation chain, not between key bytes. Without this, rotating orphans your own history.",
+      "arrival": [
+        {
+          "id": "e1",
+          "author": "alice_k1",
+          "type": "review.created",
+          "at": "2026-01-01T10:00:00Z",
+          "payload": {
+            "entity": "cnpj:1",
+            "rating": 2,
+            "body": "v1"
+          }
+        },
+        {
+          "id": "rot",
+          "author": "alice_k1",
+          "type": "identity.key_rotated",
+          "at": "2026-01-02T10:00:00Z",
+          "payload": {
+            "successor": "alice_k2"
+          }
+        },
+        {
+          "id": "e2",
+          "author": "alice_k2",
+          "type": "review.replaced",
+          "at": "2026-01-03T10:00:00Z",
+          "payload": {
+            "replaces": "e1",
+            "rating": 4,
+            "body": "v2"
+          }
+        }
+      ],
+      "expect": {
+        "accepted": [
+          "e1",
+          "rot",
+          "e2"
+        ],
+        "rejected": [],
+        "head": "e2",
+        "note": "alice_k2 is the same identity as alice_k1 after the rotation"
+      }
+    },
+    {
+      "name": "authorship checkable against a pruned target",
+      "why": "This is exactly why the tombstone retains the author. Without it, a replaces naming a pruned target would be unverifiable forever.",
+      "arrival": [
+        {
+          "id": "e2",
+          "author": "alice",
+          "type": "review.replaced",
+          "at": "2026-01-03T10:00:00Z",
+          "payload": {
+            "replaces": "e1",
+            "rating": 4,
+            "body": "v2"
+          }
+        }
+      ],
+      "expect": {
+        "tombstones": [
+          {
+            "id": "e1",
+            "author": "alice"
+          }
+        ],
+        "accepted": [
+          "e2"
+        ],
+        "rejected": [],
+        "note": "no v1 node prunes, but the rule must hold once pruning exists"
+      }
+    }
+  ]
+}
