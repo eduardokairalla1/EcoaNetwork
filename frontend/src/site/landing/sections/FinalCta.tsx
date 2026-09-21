@@ -1,0 +1,78 @@
+/**
+ * Section 9 — the close.
+ */
+
+// --- IMPORTS ---
+import { cn } from '@/components/ui/cn'
+import { motion } from 'motion/react'
+
+import { CircleMark } from '@/components/ecoa/CircleMark'
+import { Button } from '@/components/ui/Button'
+import { ROUTES } from '@/routes'
+import { Container } from '@/components/ui/Container'
+import { Section } from '@/site/landing/Section'
+import { useReveal } from '@/components/ui/useReveal'
+
+// --- CODE ---
+/**
+ * Builds the FinalCta section.
+ *
+ * @returns The FinalCta section.
+ */
+export function FinalCta() {
+  const reveal = useReveal()
+
+  return (
+    <Section id="join" className="py-32 md:py-40">
+      <Container className="flex flex-col items-center gap-10 text-center">
+        <motion.h2
+          {...reveal()}
+          className={cn(
+            'font-display text-display-l font-bold tracking-[-0.04em]',
+            'uppercase text-balance',
+          )}
+        >
+          Every experience
+          <br />
+          leaves an{' '}
+          <span className="relative inline-block">
+            echo
+            <CircleMark
+              className="absolute -inset-x-6 -inset-y-5 -z-10 overflow-visible"
+              delay={0.2}
+            />
+          </span>
+          .
+        </motion.h2>
+
+        <motion.p
+          {...reveal(0.1)}
+          className={cn(
+            'font-display text-h2 font-medium tracking-heading text-secondary',
+          )}
+        >
+          What will yours say?
+        </motion.p>
+
+        <motion.div
+          {...reveal(0.18)}
+          className="flex flex-wrap items-center justify-center gap-3"
+        >
+          <Button as="a" href={ROUTES.explore} size="lg">
+            Explore Ecoa
+          </Button>
+          <Button as="a" href={ROUTES.register} variant="secondary" size="lg">
+            Create identity
+          </Button>
+          <Button as="a" href={ROUTES.write} variant="ghost" size="lg">
+            Write a review
+          </Button>
+        </motion.div>
+
+        <motion.p {...reveal(0.26)} className="meta text-muted">
+          Reading needs no account
+        </motion.p>
+      </Container>
+    </Section>
+  )
+}
