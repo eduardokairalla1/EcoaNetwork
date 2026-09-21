@@ -1,75 +1,48 @@
-# React + TypeScript + Vite
+# ecoa-frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+The Ecoa web client.
 
-Currently, two official plugins are available:
+## Getting started
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```bash
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://npmx.dev/package/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://npmx.dev/package/eslint-plugin-react-dom) for React-specific lint rules:
+| Script | What it does |
+|---|---|
+| `npm run dev` | Dev server with hot reload, on port 5173 |
+| `npm run build` | Type-checks with `tsc -b`, then builds to `dist/` |
+| `npm run preview` | Serves `dist/` as a static host would |
+| `npm run lint` | ESLint over the whole project |
+| `npm run format` | Prettier over sources and configs |
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+`npm run dev` does **not** type-check — only `build` does. Keep an eye on the
+editor, or run `build` before pushing.
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Stack
 
-```
+React 19 · TypeScript 6 · Vite 8 · Tailwind CSS 4 · React Router 8 ·
+Motion · Radix (Dialog, Accordion)
+
+## Where things are
+
+- [docs/structure.md](docs/structure.md) — what each folder does, and where a
+  new file goes
+- [docs/tokens.md](docs/tokens.md) — fonts, colour, spacing, motion
+
+Two entries worth knowing before anything else: `src/routes.ts` is the single
+map of every destination the client links to, and `src/styles/tokens.css`
+declares every visual value in the product.
+
+## Conventions
+
+- **Three sections per file**, in order: `// --- IMPORTS ---`,
+  `// --- GLOBALS ---` (constants and types), `// --- CODE ---` (functions).
+- **A docstring on the file and on every function**, one line plus `@param`
+  and `@returns`.
+- **Comments are one line.** Longer only with a `NOTE:` prefix, and only where
+  removing the note would invite a silent bug.
+- **80 columns.** Prettier handles the code; ESLint's `max-len` catches the
+  strings and comments it cannot break.
+- **Types live beside the code**: `Button.tsx` and `Button.t.ts`.
