@@ -1,0 +1,217 @@
+/**
+ * ECOA — TOKEN LAYER
+ */
+
+@theme {
+  /* --- type families --- */
+  --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Instrument Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* --- type scale --- */
+  --text-display-xl: clamp(2.5rem, 8vw, 6rem);
+  --text-display-xl--line-height: 0.96;
+  --text-display-l: clamp(3rem, 7vw, 4.5rem);
+  --text-display-l--line-height: 0.98;
+  --text-display-m: clamp(2.25rem, 5vw, 3.5rem);
+  --text-display-m--line-height: 1.02;
+  --text-h1: clamp(2rem, 3.5vw, 2.5rem);
+  --text-h1--line-height: 1.1;
+  --text-h2: 2rem;
+  --text-h2--line-height: 1.12;
+  --text-h3: 1.5rem;
+  --text-h3--line-height: 1.25;
+  --text-h4: 1.25rem;
+  --text-h4--line-height: 1.3;
+  --text-body-l: 1.125rem;
+  --text-body-l--line-height: 1.55;
+  --text-body-m: 1rem;
+  --text-body-m--line-height: 1.5;
+  --text-body-s: 0.875rem;
+  --text-body-s--line-height: 1.45;
+  --text-label-m: 0.8125rem;
+  --text-label-m--line-height: 1.25;
+  --text-label-s: 0.6875rem;
+  --text-label-s--line-height: 1.3;
+  --text-mono-m: 0.8125rem;
+  --text-mono-m--line-height: 1.5;
+  --text-mono-s: 0.6875rem;
+  --text-mono-s--line-height: 1.45;
+
+  --tracking-metadata: 0.06em;
+  --tracking-display: -0.03em;
+  --tracking-heading: -0.02em;
+  --tracking-wordmark: -0.05em;
+
+  /* --- shape --- */
+  --radius-none: 0px;
+  --radius-micro: 2px;
+  --radius-small: 4px;
+  --radius-full: 999px;
+
+  /* --- motion --- */
+  --ease-standard: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  /* --- layout --- */
+  --container-content: 1280px;
+  --container-reading: 720px;
+}
+
+:root {
+  --rgb-paper: 250 250 248;
+  --rgb-ink: 17 19 22;
+  --ecoa-canvas: #0e0f10;
+  --ecoa-surface: #141618;
+  --ecoa-surface-raised: #1b1e21;
+  --ecoa-surface-sunken: #0a0b0c;
+
+  /* --- text --- */
+  --ecoa-text-primary: #f2f3f4;
+  --ecoa-text-secondary: #a8adb3;
+  --ecoa-text-muted: #868c93;
+
+  /* --- structure --- */
+  --ecoa-border-quiet: rgb(var(--rgb-paper) / 0.1);
+  --ecoa-border: rgb(var(--rgb-paper) / 0.18);
+  --ecoa-border-strong: rgb(var(--rgb-paper) / 0.34);
+  --ecoa-border-structural: #68707b;
+  --ecoa-grid-line: rgb(var(--rgb-paper) / 0.08);
+
+  /* --- semantics --- */
+  --ecoa-valid: #4ed4a0;
+  --ecoa-warning: #ffc845;
+  --ecoa-danger: #ff7b72;
+  --ecoa-info: #5ccbee;
+  --ecoa-info-wash: rgb(92 203 238 / 0.12);
+  --ecoa-text-on-danger: #0e0f10;
+  --ecoa-scrim: rgb(var(--rgb-ink) / 0.72);
+  --ecoa-focus-halo: #fafaf8;
+
+  /* --- surface-independent accents --- */
+  --ecoa-accent: #6d9bff;
+  --ecoa-accent-valid: #4ed4a0;
+  --ecoa-text-on-accent: #11110f;
+
+  /* spelled out: bg-accent/10 silently drops the opacity */
+  --ecoa-accent-wash: rgb(109 155 255 / 0.12);
+}
+
+/* --- paper context --- */
+[data-surface="light"] {
+  --ecoa-canvas: #fafaf8;
+  --ecoa-surface: #ffffff;
+  --ecoa-surface-raised: #ffffff;
+  --ecoa-surface-sunken: #f1f1ee;
+
+  /* --- text --- */
+  --ecoa-text-primary: #111316;
+  --ecoa-text-secondary: #55595f;
+  --ecoa-text-muted: #676b72;
+
+  /* --- structure --- */
+  --ecoa-border-quiet: #ebebe7;
+  --ecoa-border: #dcdcd7;
+  --ecoa-border-strong: #8b8b85;
+  --ecoa-border-structural: #111316;
+  --ecoa-grid-line: rgb(var(--rgb-ink) / 0.08);
+
+  /* --- semantics --- */
+  --ecoa-valid: #147a5a;
+  --ecoa-warning: #8a5300;
+  --ecoa-danger: #b42318;
+  --ecoa-info: #0b6e8c;
+  --ecoa-info-wash: #e6f4f9;
+  --ecoa-text-on-danger: #ffffff;
+  --ecoa-focus-halo: #11110f;
+
+  color: var(--ecoa-text-primary);
+  background-color: var(--ecoa-canvas);
+}
+
+/* --- signal palette: blue (default) --- */
+:root,
+[data-palette="blue"] {
+  --ecoa-signal: #6d9bff;
+  --ecoa-signal-bright: #8fb4ff;
+  --ecoa-signal-dim: #3f6fd6;
+  --ecoa-signal-wash: rgb(109 155 255 / 0.16);
+  --ecoa-text-on-signal: #11110f;
+  --ecoa-focus: #6d9bff;
+  --ecoa-hand: #6d9bff;
+  --hand-weight: 3.5px;
+  --hand-opacity: 0.92;
+}
+
+/* --- blue on paper: same blue, fill only --- */
+:root [data-surface="light"],
+[data-palette="blue"] [data-surface="light"] {
+  --ecoa-signal: #6d9bff;
+  --ecoa-signal-bright: #8fb4ff;
+  --ecoa-signal-dim: #4e82ea;
+  --ecoa-signal-wash: rgb(109 155 255 / 0.12);
+  --ecoa-text-on-signal: #11110f;
+  --ecoa-focus: #6d9bff;
+  --ecoa-hand: #6d9bff;
+  --hand-weight: 5.5px;
+}
+
+/* --- signal palette: mono --- */
+[data-palette="mono"] {
+  --ecoa-signal: #f4f3ee;
+  --ecoa-signal-bright: #ffffff;
+  --ecoa-signal-dim: #a8adb3;
+  --ecoa-signal-wash: rgb(244 243 238 / 0.1);
+  --ecoa-text-on-signal: #11110f;
+  --ecoa-focus: #f4f3ee;
+  --ecoa-hand: #6d9bff;
+}
+
+[data-palette="mono"] [data-surface="light"] {
+  --ecoa-signal: #111316;
+  --ecoa-signal-bright: #000000;
+  --ecoa-signal-dim: #55595f;
+  --ecoa-signal-wash: rgb(17 19 22 / 0.06);
+  --ecoa-text-on-signal: #fafaf8;
+  --ecoa-focus: #111316;
+  --ecoa-hand: #6d9bff;
+}
+
+/* --- tailwind registration: `inline` keeps these re-resolvable --- */
+@theme inline {
+
+  --color-canvas: var(--ecoa-canvas);
+  --color-surface: var(--ecoa-surface);
+  --color-surface-raised: var(--ecoa-surface-raised);
+  --color-surface-sunken: var(--ecoa-surface-sunken);
+
+  --color-primary: var(--ecoa-text-primary);
+  --color-secondary: var(--ecoa-text-secondary);
+  --color-muted: var(--ecoa-text-muted);
+
+  --color-quiet: var(--ecoa-border-quiet);
+  --color-line: var(--ecoa-border);
+  --color-strong: var(--ecoa-border-strong);
+  --color-structural: var(--ecoa-border-structural);
+
+  --color-valid: var(--ecoa-valid);
+  --color-warning: var(--ecoa-warning);
+  --color-danger: var(--ecoa-danger);
+  --color-info: var(--ecoa-info);
+  --color-info-wash: var(--ecoa-info-wash);
+  --color-on-danger: var(--ecoa-text-on-danger);
+
+  --color-signal: var(--ecoa-signal);
+  --color-signal-bright: var(--ecoa-signal-bright);
+  --color-signal-dim: var(--ecoa-signal-dim);
+  --color-signal-wash: var(--ecoa-signal-wash);
+  --color-on-signal: var(--ecoa-text-on-signal);
+  --color-focus: var(--ecoa-focus);
+  --color-focus-halo: var(--ecoa-focus-halo);
+  --color-hand: var(--ecoa-hand);
+  --color-scrim: var(--ecoa-scrim);
+
+  --color-accent: var(--ecoa-accent);
+  --color-accent-wash: var(--ecoa-accent-wash);
+  --color-accent-valid: var(--ecoa-accent-valid);
+  --color-on-accent: var(--ecoa-text-on-accent);
+}
