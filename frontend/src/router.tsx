@@ -7,6 +7,7 @@ import { createBrowserRouter } from 'react-router'
 
 import { AppLayout } from '@/app/layout/AppLayout'
 import { Login } from '@/app/auth/Login'
+import { Register } from '@/app/auth/Register'
 import { Landing } from '@/site/landing/Landing'
 import { NotFound } from '@/site/NotFound'
 import { SiteLayout } from '@/site/layout/SiteLayout'
@@ -20,7 +21,10 @@ export const router = createBrowserRouter([
   {
     path: 'app',
     element: <AppLayout />,
-    children: [{ path: 'login', element: <Login /> }],
+    children: [
+      { path: 'login', element: <Login /> },
+      { path: 'register', element: <Register /> },
+    ],
   },
   {
     element: <SiteLayout nav={false} />,
