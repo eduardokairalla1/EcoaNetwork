@@ -1,0 +1,3 @@
+"""
+Ecoa platform backend API.
+"""
