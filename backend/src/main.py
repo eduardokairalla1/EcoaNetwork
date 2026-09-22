@@ -6,6 +6,7 @@ Service entry point.
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
+from src import routers
 from src.app import app
 from src.events import on_shutdown
 from src.events import on_startup
@@ -14,6 +15,7 @@ from src.utils.logging_config import setup_logger
 
 # --- GLOBALS ---
 setup_logger()
+routers.mount(app)
 
 
 # --- CODE ---

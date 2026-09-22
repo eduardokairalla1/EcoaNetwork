@@ -17,6 +17,9 @@ class Config(BaseSettings):
     ENVIRONMENT: str = 'development'
     LOG_LEVEL: str = 'INFO'
 
+    # routing
+    API_PREFIX: str = '/api'
+
     # pydantic settings
     model_config = SettingsConfigDict(env_file='.env', extra='ignore')
 
