@@ -11,6 +11,7 @@ from src.app import app
 from src.err.handlers import register_error_handlers
 from src.events import on_shutdown
 from src.events import on_startup
+from src.middleware.cors import add_cors
 from src.utils.logging_config import setup_logger
 
 
@@ -18,6 +19,10 @@ from src.utils.logging_config import setup_logger
 setup_logger()
 routers.mount(app)
 register_error_handlers(app)
+
+
+# --- MIDDLEWARE ---
+add_cors(app)
 
 
 # --- CODE ---

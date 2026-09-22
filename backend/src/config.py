@@ -20,6 +20,19 @@ class Config(BaseSettings):
     # routing
     API_PREFIX: str = '/api'
 
+    # cors
+    CORS_ORIGINS: str = 'http://localhost:*'
+
+    @property
+    def cors_origins(self) -> list[str]:
+        """
+        Parses CORS_ORIGINS into a list.
+
+        :return: List of allowed CORS origins.
+        """
+        return [o.strip() for o in self.CORS_ORIGINS.split(',') if o.strip()]
+
+
     @property
     def is_production(self) -> bool:
         """
