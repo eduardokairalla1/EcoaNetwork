@@ -3,12 +3,17 @@
  */
 
 // --- GLOBALS ---
+// the platform lives under /app
+const APP = '/app'
 const PENDING = '/404'
 
 export const ROUTES = {
   home: '/',
   explore: PENDING,
   write: PENDING,
-  login: PENDING,
-  register: PENDING,
+  login: `${APP}/login`,
+  register: `${APP}/register`,
+  verify: `${APP}/verify`,
+  forgotPassword: `${APP}/forgot-password`,
+  resetPassword: `${APP}/reset-password`,
 } as const
