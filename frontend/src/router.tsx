@@ -1,9 +1,12 @@
 /**
- * The route tree. Only the site is wired so far.
+ * The route tree for the site and the platform.
  */
 
 // --- IMPORTS ---
 import { createBrowserRouter } from 'react-router'
+
+import { AppLayout } from '@/app/layout/AppLayout'
+import { Login } from '@/app/auth/Login'
 import { Landing } from '@/site/landing/Landing'
 import { NotFound } from '@/site/NotFound'
 import { SiteLayout } from '@/site/layout/SiteLayout'
@@ -13,6 +16,11 @@ export const router = createBrowserRouter([
   {
     element: <SiteLayout />,
     children: [{ index: true, element: <Landing /> }],
+  },
+  {
+    path: 'app',
+    element: <AppLayout />,
+    children: [{ path: 'login', element: <Login /> }],
   },
   {
     element: <SiteLayout nav={false} />,
