@@ -7,6 +7,8 @@ from fastapi.testclient import TestClient
 from importlib.metadata import version
 from src.app import app
 
+import pytest
+
 
 # --- TESTS ---
 def test_health_returns_200(client: TestClient) -> None:
@@ -45,3 +47,23 @@ def test_repeated_startups_do_not_duplicate_routes() -> None:
             pass
     assert len(app.routes) == route_count
 
+
+# --- ERROR CONTRACT ---
+@pytest.mark.parametrize(
+    ('method', 'path', 'status'),
+    [
+        ('get', '/rota-inexistente', 404),
+        ('post', '/api/system/health', 405),
+    ],
+)
+def test_framework_errors_use_the_json_error_envelope(
+    client: TestClient, method: str, path: str, status: int
+) -> None:
+    """404/405 come from Starlette's router, not from our code, and must
+    still answer with {'error', 'message'} like every other failure."""
+    response = getattr(client, method)(path)
+
+    assert response.status_code == status
+    body = response.json()
+    assert body['error'] == 'http_error'
+    assert isinstance(body['message'], str)
