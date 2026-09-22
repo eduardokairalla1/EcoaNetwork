@@ -8,10 +8,14 @@ import * as Dialog from '@radix-ui/react-dialog'
 import { motion, useReducedMotion } from 'motion/react'
 import { Button } from '@/components/ui/Button'
 import { CircleMark } from '@/components/ecoa/CircleMark'
+import { Wordmark } from '@/components/ecoa/Wordmark'
 import { Container } from '@/components/ui/Container'
 import { NAV_LINKS } from '@/site/layout/nav'
 import { ROUTES } from '@/routes'
 import { cn } from '@/components/ui/cn'
+
+// --- GLOBALS ---
+const WORDMARK_SQUARES = 'transition-colors duration-surface ease-standard'
 
 // --- CODE ---
 /**
@@ -222,26 +226,7 @@ export function SiteNav() {
           className="flex items-center gap-3 justify-self-start"
           aria-label="Ecoa — home"
         >
-          <span aria-hidden="true" className="grid grid-cols-2 gap-0.5">
-            {['bg-signal', 'bg-primary', 'bg-primary', 'bg-signal'].map(
-              (tone, index) => (
-                <span
-                  key={index}
-                  className={cn(
-                    'size-2 transition-colors duration-surface ease-standard',
-                    tone,
-                  )}
-                />
-              ),
-            )}
-          </span>
-          <span
-            className={cn(
-              'font-display text-h4 font-semibold tracking-wordmark',
-            )}
-          >
-            ECOA
-          </span>
+          <Wordmark squareClassName={WORDMARK_SQUARES} />
         </a>
 
         <nav

@@ -4,6 +4,7 @@
 
 // --- IMPORTS ---
 import { cn } from '@/components/ui/cn'
+import { Wordmark } from '@/components/ecoa/Wordmark'
 import { Container } from '@/components/ui/Container'
 import { HeroField } from '@/site/landing/motifs/HeroField'
 import { FOOTER_LINKS } from '@/site/layout/nav'
@@ -37,19 +38,7 @@ export function SiteFooter() {
               className="flex items-center gap-3"
               aria-label="Ecoa — home"
             >
-              <span aria-hidden="true" className="grid grid-cols-2 gap-0.5">
-                <span className="size-2 bg-signal" />
-                <span className="size-2 bg-primary" />
-                <span className="size-2 bg-primary" />
-                <span className="size-2 bg-signal" />
-              </span>
-              <span
-                className={cn(
-                  'font-display text-h4 font-semibold tracking-wordmark',
-                )}
-              >
-                ECOA
-              </span>
+              <Wordmark />
             </a>
             <p
               className={cn(
