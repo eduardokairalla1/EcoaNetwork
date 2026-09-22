@@ -10,6 +10,7 @@ import { HeroField } from '@/site/landing/motifs/HeroField'
 import { Button } from '@/components/ui/Button'
 import { ROUTES } from '@/routes'
 import { cn } from '@/components/ui/cn'
+import { useRise } from '@/components/ui/useRise'
 
 // --- GLOBALS ---
 /** Small artifacts floating in the field, in Ecoa vocabulary. */
@@ -71,21 +72,7 @@ function Chips() {
  * @returns The hero section.
  */
 export function Hero() {
-  const reduceMotion = useReducedMotion()
-
-  /**
-   * Builds motion props that rise an element in.
-   *
-   * @param delay - Seconds before it starts.
-   * @returns Props to spread onto a motion element.
-   */
-  const rise = (delay: number) => ({
-    initial: { opacity: 0, y: reduceMotion ? 0 : 14 },
-    animate: { opacity: 1, y: 0 },
-    transition: reduceMotion
-      ? { duration: 0 }
-      : { duration: 0.5, delay, ease: [0.2, 0.8, 0.2, 1] as const },
-  })
+  const rise = useRise()
 
   return (
     <section
