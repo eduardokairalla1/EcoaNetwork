@@ -20,6 +20,15 @@ class Config(BaseSettings):
     # routing
     API_PREFIX: str = '/api'
 
+    @property
+    def is_production(self) -> bool:
+        """
+        Whether this instance runs in production.
+
+        :return: True when ENVIRONMENT is 'production'.
+        """
+        return self.ENVIRONMENT.strip().lower() == 'production'
+
     # pydantic settings
     model_config = SettingsConfigDict(env_file='.env', extra='ignore')
 
