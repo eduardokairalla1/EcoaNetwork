@@ -8,6 +8,7 @@ import { createBrowserRouter } from 'react-router'
 import { AppLayout } from '@/app/layout/AppLayout'
 import { ForgotPassword } from '@/app/auth/ForgotPassword'
 import { Login } from '@/app/auth/Login'
+import { ResetPassword } from '@/app/auth/ResetPassword'
 import { Register } from '@/app/auth/Register'
 import { VerifyEmail } from '@/app/auth/VerifyEmail'
 import { Landing } from '@/site/landing/Landing'
@@ -28,6 +29,7 @@ export const router = createBrowserRouter([
       { path: 'register', element: <Register /> },
       { path: 'verify', element: <VerifyEmail /> },
       { path: 'forgot-password', element: <ForgotPassword /> },
+      { path: 'reset-password', element: <ResetPassword /> },
     ],
   },
   {
