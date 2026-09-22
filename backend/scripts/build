@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# always run from the backend root
+cd "$(dirname "$0")/.."
+
+# abort on any pending change (staged, unstaged or untracked)
+if [ -n "$(git status --porcelain .)" ]; then
+  echo "Working tree is not clean — commit or stash before building."
+  echo ""
+  git status --short .
+  exit 1
+fi
+
+# build the tag from pyproject.toml version + the HEAD commit hash
+VERSION="$(grep '^version' pyproject.toml | head -n1 | awk -F'"' '{ print $2 }')"
+SHA="$(git rev-parse --short HEAD)"
+TAG="ecoa-backend:${VERSION}-${SHA}"
+
+# build image
+echo "==> Building ${TAG}..."
+docker build --tag "${TAG}" .
