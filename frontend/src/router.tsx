@@ -8,6 +8,7 @@ import { createBrowserRouter } from 'react-router'
 import { AppLayout } from '@/app/layout/AppLayout'
 import { Login } from '@/app/auth/Login'
 import { Register } from '@/app/auth/Register'
+import { VerifyEmail } from '@/app/auth/VerifyEmail'
 import { Landing } from '@/site/landing/Landing'
 import { NotFound } from '@/site/NotFound'
 import { SiteLayout } from '@/site/layout/SiteLayout'
@@ -24,6 +25,7 @@ export const router = createBrowserRouter([
     children: [
       { path: 'login', element: <Login /> },
       { path: 'register', element: <Register /> },
+      { path: 'verify', element: <VerifyEmail /> },
     ],
   },
   {
