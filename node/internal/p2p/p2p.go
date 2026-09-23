@@ -6,6 +6,7 @@ package p2p
 import (
 	"context"
 	"log/slog"
+	"time"
 
 	"github.com/libp2p/go-libp2p"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
@@ -15,6 +16,10 @@ import (
 
 
 // --- GLOBALS ---
+
+// pollInterval is how often WaitForPeers rechecks the topic.
+const pollInterval = 50 * time.Millisecond
+
 
 // DefaultBootstrapAddrs is the bootstrap list shipped with the node. Empty
 // until a public node exists; the operator overrides it from configuration.
@@ -137,6 +142,31 @@ func (p *Peer) Addrs() []string {
 		addrs = append(addrs, a.String()+"/p2p/"+p.host.ID().String())
 	}
 	return addrs
+}
+
+
+// WaitForPeers blocks until the topic is ready to carry a publish, or ctx is
+// cancelled. Gossipsub drops a message with no route instead of queueing it.
+//
+// A peer appears in ListPeers as soon as its subscription arrives, but it only
+// starts relaying once the mesh is grafted, which happens on the next
+// heartbeat. Publishing in between is silently lost, so waiting for a peer is
+// necessary and not sufficient: one heartbeat has to pass as well.
+func (p *Peer) WaitForPeers(ctx context.Context) error {
+	for len(p.topic.ListPeers()) == 0 {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(pollInterval):
+		}
+	}
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-time.After(pubsub.GossipSubHeartbeatInterval):
+		return nil
+	}
 }
 
 
