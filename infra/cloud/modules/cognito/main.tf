@@ -41,6 +41,12 @@ resource "aws_cognito_user_pool" "this" {
   email_configuration {
     email_sending_account = "COGNITO_DEFAULT"
   }
+
+  mfa_configuration = "OPTIONAL"
+
+  software_token_mfa_configuration {
+    enabled = true
+  }
 }
 
 resource "aws_cognito_user_pool_client" "backend" {
