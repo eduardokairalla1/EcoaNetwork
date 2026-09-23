@@ -14,6 +14,17 @@ variable "deletion_protection" {
   }
 }
 
+variable "tier" {
+  description = "Feature plan. LITE covers everything this pool uses and is the cheapest past the free tier; AWS defaults to ESSENTIALS if unset. Avoid PLUS, which has no free tier."
+  type        = string
+  default     = "LITE"
+
+  validation {
+    condition     = contains(["LITE", "ESSENTIALS", "PLUS"], var.tier)
+    error_message = "tier must be LITE, ESSENTIALS or PLUS."
+  }
+}
+
 variable "password_min_length" {
   description = "Shortest password accepted. Lowercase, uppercase, number and symbol are required on top of it."
   type        = number
