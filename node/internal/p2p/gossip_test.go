@@ -2,6 +2,7 @@ package p2p
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -53,5 +54,24 @@ func TestJoinTopic(t *testing.T) {
 
 	if topic.String() != Topic("ecoa-test") {
 		t.Errorf("joined %q, want %q", topic.String(), Topic("ecoa-test"))
+	}
+}
+
+
+func TestReceiveEventStopsWithContext(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	p, err := New(ctx, Config{Network: "ecoa-test", Listen: loopback})
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	defer p.Close()
+
+	cancelled, stop := context.WithCancel(ctx)
+	stop()
+
+	if _, err := p.ReceiveEvent(cancelled); !errors.Is(err, context.Canceled) {
+		t.Fatalf("ReceiveEvent = %v, want a cancellation error", err)
 	}
 }
