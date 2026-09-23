@@ -1,5 +1,8 @@
 # The S3 bucket that holds remote state. Applied once per AWS account, with
 # local state, before any environment that uses the S3 backend.
+#
+# The code is the same for every account, so each account gets a workspace
+# named after it (dev, prod) and its own state under terraform.tfstate.d/.
 
 terraform {
   required_version = ">= 1.10"
@@ -43,6 +46,13 @@ resource "aws_s3_bucket" "state" {
 
   lifecycle {
     prevent_destroy = true
+
+    # The default workspace belongs to no account; applying there would mix
+    # one account's bucket into another's state.
+    precondition {
+      condition     = terraform.workspace != "default"
+      error_message = "Select the account's workspace first: terraform workspace select dev"
+    }
   }
 }
 
