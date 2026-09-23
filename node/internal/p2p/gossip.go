@@ -86,3 +86,9 @@ func (p *Peer) WaitForPeers(ctx context.Context) error {
 		return nil
 	}
 }
+
+
+// Publish sends an event to the topic.
+func (p *Peer) Publish(ctx context.Context, raw []byte) error {
+	return p.topic.Publish(ctx, raw)
+}

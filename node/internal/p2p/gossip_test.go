@@ -1,6 +1,7 @@
 package p2p
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"testing"
@@ -136,5 +137,47 @@ func TestWaitForPeersGivesUpDuringHeartbeat(t *testing.T) {
 
 	if err := a.WaitForPeers(cancelled); !errors.Is(err, context.Canceled) {
 		t.Fatalf("WaitForPeers = %v, want a cancellation error", err)
+	}
+}
+
+
+// TestPublishReachesPeer is the one that matters: an event published on one
+// node has to arrive on another over Gossipsub.
+func TestPublishReachesPeer(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	sender, err := New(ctx, Config{Network: "ecoa-test", Listen: loopback})
+	if err != nil {
+		t.Fatalf("sender: %v", err)
+	}
+	defer sender.Close()
+
+	receiver, err := New(ctx, Config{
+		Network:        "ecoa-test",
+		Listen:         loopback,
+		BootstrapAddrs: sender.Addrs(),
+	})
+	if err != nil {
+		t.Fatalf("receiver: %v", err)
+	}
+	defer receiver.Close()
+
+	if err := sender.WaitForPeers(ctx); err != nil {
+		t.Fatalf("no peer subscribed to the topic: %v", err)
+	}
+
+	event := []byte(`{"eventType":"review.created"}`)
+	if err := sender.Publish(ctx, event); err != nil {
+		t.Fatalf("publish: %v", err)
+	}
+
+	got, err := receiver.ReceiveEvent(ctx)
+	if err != nil {
+		t.Fatalf("event never arrived: %v", err)
+	}
+
+	if !bytes.Equal(got, event) {
+		t.Errorf("received %q, want %q", got, event)
 	}
 }
