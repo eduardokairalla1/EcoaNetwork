@@ -19,3 +19,15 @@ variable "password_min_length" {
   type        = number
   default     = 8
 }
+
+variable "access_token_validity_minutes" {
+  description = "Lifetime of access and ID tokens."
+  type        = number
+  default     = 60
+}
+
+variable "refresh_token_validity_days" {
+  description = "Lifetime of refresh tokens."
+  type        = number
+  default     = 30
+}

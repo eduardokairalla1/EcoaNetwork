@@ -6,6 +6,15 @@ output "user_pool_arn" {
   value = aws_cognito_user_pool.this.arn
 }
 
+output "client_id" {
+  value = aws_cognito_user_pool_client.backend.id
+}
+
+output "client_secret" {
+  value     = aws_cognito_user_pool_client.backend.client_secret
+  sensitive = true
+}
+
 output "issuer" {
   value = "https://${aws_cognito_user_pool.this.endpoint}"
 }
