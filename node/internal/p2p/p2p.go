@@ -113,6 +113,22 @@ func joinTopic(
 }
 
 
+// Run receives events until ctx is cancelled. It blocks, so a caller wanting
+// it in the background starts it with go.
+func (p *Peer) Run(ctx context.Context) {
+	for {
+		msg, err := p.sub.Next(ctx)
+		if err != nil {
+			return
+		}
+
+		slog.Info("accepted",
+				   "bytes", len(msg.Data),
+				   "from", msg.ReceivedFrom)
+	}
+}
+
+
 // Close shuts down the host.
 func (p *Peer) Close() error {
 	return p.host.Close()
