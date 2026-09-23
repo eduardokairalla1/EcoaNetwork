@@ -83,6 +83,32 @@ resource "aws_s3_bucket_public_access_block" "state" {
   restrict_public_buckets = true
 }
 
+# State holds secrets in plain text; refuse any request that isn't over TLS.
+resource "aws_s3_bucket_policy" "state" {
+  bucket = aws_s3_bucket.state.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "DenyInsecureTransport"
+      Effect    = "Deny"
+      Principal = "*"
+      Action    = "s3:*"
+      Resource = [
+        aws_s3_bucket.state.arn,
+        "${aws_s3_bucket.state.arn}/*",
+      ]
+      Condition = {
+        Bool = { "aws:SecureTransport" = "false" }
+      }
+    }]
+  })
+
+  # A bucket policy is rejected while the public access block is still being
+  # applied, so let that settle first.
+  depends_on = [aws_s3_bucket_public_access_block.state]
+}
+
 output "state_bucket" {
   value = aws_s3_bucket.state.bucket
 }
