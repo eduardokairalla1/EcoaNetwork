@@ -79,6 +79,17 @@ func connectBootstrap(ctx context.Context, h host.Host, addrs []string) {
 }
 
 
+// Addrs returns this node's full multiaddrs, ready to be used as another
+// node's bootstrap entries.
+func (p *Peer) Addrs() []string {
+	var addrs []string
+	for _, a := range p.host.Addrs() {
+		addrs = append(addrs, a.String()+"/p2p/"+p.host.ID().String())
+	}
+	return addrs
+}
+
+
 // Close shuts down the host.
 func (p *Peer) Close() error {
 	return p.host.Close()
