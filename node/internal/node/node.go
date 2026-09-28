@@ -5,6 +5,7 @@ package node
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log/slog"
 
 	"github.com/eduardokairalla1/EcoaNetwork/internal/p2p"
@@ -54,7 +55,15 @@ func (n *Node) Run(ctx context.Context) {
 			return
 		}
 
-		slog.Info("received", "bytes", len(raw))
+		if err := n.Handle(raw); err != nil {
+			// A duplicate is dropped silently.
+			if !errors.Is(err, store.ErrDuplicate) {
+				slog.Warn("handle", "err", err)
+			}
+			continue
+		}
+
+		slog.Info("stored", "bytes", len(raw))
 	}
 }
 
