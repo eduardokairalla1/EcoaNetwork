@@ -4,6 +4,7 @@ package node
 
 import (
 	"context"
+	"encoding/json"
 	"log/slog"
 
 	"github.com/eduardokairalla1/EcoaNetwork/internal/p2p"
@@ -28,6 +29,20 @@ func New(ctx context.Context, s *store.Store, cfg p2p.Config) (*Node, error) {
 	}
 
 	return &Node{store: s, peer: p}, nil
+}
+
+
+// Handle stores events from every door under their claimed, unverified id.
+func (n *Node) Handle(raw []byte) error {
+	var env struct {
+		EventID string `json:"eventId"`
+	}
+
+	if err := json.Unmarshal(raw, &env); err != nil {
+		return err
+	}
+
+	return n.store.AddEvent(env.EventID, raw)
 }
 
 
