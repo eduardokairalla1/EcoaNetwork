@@ -10,6 +10,7 @@ import (
 
 	"github.com/eduardokairalla1/EcoaNetwork/internal/node"
 	"github.com/eduardokairalla1/EcoaNetwork/internal/p2p"
+	"github.com/eduardokairalla1/EcoaNetwork/internal/store"
 )
 
 
@@ -52,8 +53,22 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 
+	boltDbPath := os.Getenv("BOLT_DB_PATH")
+	if boltDbPath == "" {
+		boltDbPath = "data/bbolt/bolt.db"
+	}
+
+	db, err := store.New(boltDbPath)
+	if err != nil {
+		slog.Error("open store", "path", boltDbPath, "err", err)
+		os.Exit(1)
+	}
+
+	defer db.Close()
+
 	n, err := node.New(
 		ctx,
+		db,
 		p2p.Config{
 			Network:        *network,
 			Listen:         *listen,

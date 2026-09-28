@@ -7,25 +7,27 @@ import (
 	"log/slog"
 
 	"github.com/eduardokairalla1/EcoaNetwork/internal/p2p"
+	"github.com/eduardokairalla1/EcoaNetwork/internal/store"
 )
 
 
 // --- GLOBALS ---
 
 type Node struct {
-	peer *p2p.Peer
+	store *store.Store
+	peer  *p2p.Peer
 }
 
 
 // --- CODE ---
 
-func New(ctx context.Context, cfg p2p.Config) (*Node, error) {
+func New(ctx context.Context, s *store.Store, cfg p2p.Config) (*Node, error) {
 	p, err := p2p.New(ctx, cfg)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Node{peer: p}, nil
+	return &Node{store: s, peer: p}, nil
 }
 
 
