@@ -4,28 +4,46 @@ package node
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"log/slog"
 
 	"github.com/eduardokairalla1/EcoaNetwork/internal/p2p"
+	"github.com/eduardokairalla1/EcoaNetwork/internal/store"
 )
 
 
 // --- GLOBALS ---
 
 type Node struct {
-	peer *p2p.Peer
+	store *store.Store
+	peer  *p2p.Peer
 }
 
 
 // --- CODE ---
 
-func New(ctx context.Context, cfg p2p.Config) (*Node, error) {
+func New(ctx context.Context, s *store.Store, cfg p2p.Config) (*Node, error) {
 	p, err := p2p.New(ctx, cfg)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Node{peer: p}, nil
+	return &Node{store: s, peer: p}, nil
+}
+
+
+// Handle stores events from every door under their claimed, unverified id.
+func (n *Node) Handle(raw []byte) error {
+	var env struct {
+		EventID string `json:"eventId"`
+	}
+
+	if err := json.Unmarshal(raw, &env); err != nil {
+		return err
+	}
+
+	return n.store.AddEvent(env.EventID, raw)
 }
 
 
@@ -37,7 +55,15 @@ func (n *Node) Run(ctx context.Context) {
 			return
 		}
 
-		slog.Info("received", "bytes", len(raw))
+		if err := n.Handle(raw); err != nil {
+			// A duplicate is dropped silently.
+			if !errors.Is(err, store.ErrDuplicate) {
+				slog.Warn("handle", "err", err)
+			}
+			continue
+		}
+
+		slog.Info("stored", "bytes", len(raw))
 	}
 }
 

@@ -8,6 +8,7 @@ require (
 	github.com/libp2p/go-libp2p v0.50.0
 	github.com/libp2p/go-libp2p-pubsub v0.17.0
 	github.com/mr-tron/base58 v1.3.0
+	go.etcd.io/bbolt v1.5.0
 )
 
 require (
