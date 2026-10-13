@@ -32,3 +32,19 @@ def test_get_finds_by_primary_key(run: Run) -> None:
         assert await notes.get(note.id + 1) is None
 
     run(body)
+
+
+def test_find_one_matches_columns_by_equality(run: Run) -> None:
+    async def body(database: Database) -> None:
+        notes = NoteStorage(database)
+        await notes.insert(title='first', body='a')
+        second = await notes.insert(title='second', body='b')
+
+        found = await notes.find_one(title='second')
+
+        assert found is not None
+        assert found.id == second.id
+        assert await notes.find_one(title='second', body='a') is None
+        assert await notes.find_one(title='missing') is None
+
+    run(body)
