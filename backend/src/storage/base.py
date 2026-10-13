@@ -27,6 +27,18 @@ class Storage[Model: Base]:
         self._database = database
 
 
+    async def get(self, key: Any) -> Model | None:
+        """
+        Finds a row by its primary key.
+
+        :param key: The primary key.
+
+        :return: The row, or None when there is none.
+        """
+        async with self._database.session() as session:
+            return await session.get(self.model, key)
+
+
     async def insert(self, **values: Any) -> Model:
         """
         Adds a row.
