@@ -6,6 +6,7 @@ Base storage.
 from collections.abc import Sequence
 from sqlalchemy import ColumnElement
 from sqlalchemy import CursorResult
+from sqlalchemy import delete
 from sqlalchemy import inspect
 from sqlalchemy import select
 from sqlalchemy import tuple_
@@ -208,3 +209,23 @@ class Storage[Model: Base]:
             await session.delete(instance)
 
         return True
+
+
+    async def delete_many(self, keys: Sequence[Any]) -> int:
+        """
+        Removes several rows in one statement: either all of them go, or none.
+
+        :param keys: The primary keys of the rows to remove.
+
+        :return: How many rows were removed. Keys with no row are skipped.
+        """
+        # nothing to remove
+        if not keys:
+            return 0
+
+        statement = delete(self.model).where(self._among(keys))
+
+        async with self._database.session() as session:
+            result = await session.execute(statement)
+
+        return cast(CursorResult[Any], result).rowcount
