@@ -122,3 +122,25 @@ class Storage[Model: Base]:
             session.add_all(instances)
 
         return instances
+
+
+    async def update(self, key: Any, **values: Any) -> Model | None:
+        """
+        Changes a row.
+
+        :param key: The primary key of the row to change.
+        :param values: Column names and their new values.
+
+        :return: The changed row, or None when there is none with that key.
+        """
+        async with self._database.session() as session:
+            instance = await session.get(self.model, key)
+
+            # nothing to change
+            if instance is None:
+                return None
+
+            for column, value in values.items():
+                setattr(instance, column, value)
+
+        return instance
