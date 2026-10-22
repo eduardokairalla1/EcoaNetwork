@@ -7,9 +7,11 @@ from fastapi import FastAPI
 from src.clients.aws import Aws
 from src.clients.cognito import CognitoClient
 from src.clients.database import Database
+from src.clients.node import NodeClient
 from src.clients.tokens import TokenVerifier
 from src.config import config
 from src.services.auth import AuthService
+from src.services.events import EventService
 from src.storage.users import UserStorage
 from src.system import Health
 from src.system import Info
@@ -69,6 +71,12 @@ async def on_startup(app: FastAPI) -> None:
         app.state.tokens
     )
 
+    # open the node connections
+    app.state.node = NodeClient(config.node_addrs)
+
+    # initialize the event service
+    app.state.events = EventService(app.state.node)
+
     # set app health as OK
     app.state.health.status = 'OK'
 
@@ -85,6 +93,9 @@ async def on_shutdown(app: FastAPI) -> None:
     :return: None.
     """
     logger.info('Service shutting down')
+
+    # close the node connections
+    await app.state.node.close()
 
     # close the aws connection
     await app.state.aws.close()
